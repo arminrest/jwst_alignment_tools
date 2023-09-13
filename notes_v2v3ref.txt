@@ -1,0 +1,170 @@
+Commissioning PIDs that observed the LMC:
+1069 (NRC-21)
+1070 (coron, NRC-21b)
+1072 (NRC-23, img quality by filter)
+1073 (NRC-24, dithers)
+      *obs 4, 5, 6, 7 were all at cold attitude. Obs 1, 2, 3 happened during OTE commissioning & might not be useable for you.
+1074 (NRC-29, photom)
+      *obs 1, 2, 3 targeted the LMC
+
+May 6, 2022 is the first date images after FGS refocusing were taken!!!
+
+
+#jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1074 --instrument 'nircam' --filetype _cal.fits --obsnum 1 2 3
+#jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1074 --instrument 'fgs' --filetype _cal.fits --obsnum 1 2 3
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1073 --instrument 'nircam' --filetype _cal.fits --obsnum 4 5 6 7
+NO FGS!
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1072 --instrument 'nircam' --filetype _cal.fits 
+NO FGS78
+
+
+Cycle 1:
+1476
+1481 (coron)
+1477 & 1478: The Linearity and persistence programs, but probably not terribly useful for you
+
+cycle 2:
+4447: 
+export JWSTDOWNLOAD_OUTDIR="/Volumes/Ext1/download"
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 4447 --instrument 'nircam' --filetype _cal.fits 
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 4447 --instrument 'fgs' --filetype _cal.fits 
+
+
+export JWSTDOWNLOAD_OUTDIR="/Volumes/Ext1/download"
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1476 --instrument 'nircam' --filetype _cal.fits  --sca a5 
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1476 --instrument 'nircam' --filetype _cal.fits  --obsnum 1
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1476 --instrument 'nircam' --filetype _cal.fits  --obsnum 3
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1476 --instrument 'nircam' --filetype _cal.fits  --obsnum 4 6
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1476 --instrument 'fgs' --filetype _cal.fits  --obsnum 1 3 4 6
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1477 --instrument 'nircam' --filetype _cal.fits  
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476 --input_files '*/jw*nrcalong*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir v1 --overwr -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476 --input_files '*/jw*nrca1*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir v1 --overwr -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists
+
+
+run_st_wcs_align.py  /Users/arest/nircam/jwst_distortions_tools/newfit/testdata_pid1476/jw01476001025_02101_00001_nrcalong_cal.fits --outrootdir '/Users/arest/nircam/jwst_distortions_tools/newfit/testdata_pid1476/jhat' --outsubdir v1 -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists 
+### --overwr 
+--d_rotated_Nsigma 0.0
+--rough_cut_px_min 2.0 
+--rough_cut_px_max 2.0
+
+run_st_wcs_align.py  /Users/arest/nircam/jwst_distortions_tools/newfit/testdata_pid1476/jw01476001025_02101_00001_nrcalong_cal.fits --outrootdir '/Users/arest/nircam/jwst_distortions_tools/newfit/testdata_pid1476/jhat' --outsubdir v1 -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d_rotated_Nsigma 0.0
+
+run_st_wcs_align.py  /Users/arest/nircam/jwst_distortions_tools/newfit/testdata_pid1476/jw01476001025_02101_00001_nrcalong_cal.fits --outrootdir '/Users/arest/nircam/jwst_distortions_tools/newfit/testdata_pid1476/jhat' --outsubdir v1 -vvv --refcat hst_lmc --saveplots -tt  --histocut_order dxdy --objmag_lim 18 24.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 5 --rough_cut_px_max 5 --d_rotated_Nsigma 0.0
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum01 --input_files 'jw*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir gaia_v1 --overwr -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists  --filters f150w f356w --rough_cut_px_min 2 --rough_cut_px_max 2 --d_rotated_Nsigma 0.0
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum01 --input_files 'jw*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir hst_v1 --overwr -vvv --refcat hst_lmc --saveplots -tt  --histocut_order dxdy --objmag_lim 17 24.5 --iterate_with_xyshifts --skip_if_exists  --filters f150w f356w --rough_cut_px_min 5 --rough_cut_px_max 5 --d_rotated_Nsigma 0.0
+
+failed, no stars!
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum01 --input_files 'jw01476001007_02101_00002_nrca1_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir hst_v1 --overwr -vvv --refcat hst_lmc --saveplots -tt  --histocut_order dxdy --objmag_lim 17 24.5 --iterate_with_xyshifts --skip_if_exists  --filters f150w f356w --rough_cut_px_min 5 --rough_cut_px_max 5 --d_rotated_Nsigma 0.0
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum01 --input_files 'jw*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir gaia_v1 --overwr -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists   --rough_cut_px_min 2 --rough_cut_px_max 2 --d_rotated_Nsigma 0.0 --filt f200w f150w f444w f277w 
+
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum01 --input_files 'jw*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir gaia_v1 --overwr -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists   --rough_cut_px_min 2 --rough_cut_px_max 2 --d_rotated_Nsigma 0.0 --filt f200w f150w f070w f090w f150w2 f115w f444w f277w f356w 
+
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum01 --input_files 'jw*nrca*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir gaia_v1 --overwr -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists   --rough_cut_px_min 2 --rough_cut_px_max 2 --d_rotated_Nsigma 0.0
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum01 --input_files 'jw*nrcb*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir gaia_v1 --overwr -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists   --rough_cut_px_min 2 --rough_cut_px_max 2 --d_rotated_Nsigma 0.0
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum01 --input_files 'jw*long*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir gaia_v1 --overwr -vvv --refcat gaia --saveplots -tt  --histocut_order dxdy --objmag_lim 17 20.5 --iterate_with_xyshifts --skip_if_exists   --rough_cut_px_min 2 --rough_cut_px_max 2 --d_rotated_Nsigma 0.0
+
+
+--------
+
+V2V3ref: use 1476 obsnum 3,6 and 4447, obsnum 2
+
+run_st_wcs_align.py  /Volumes/Ext1/download/01476/obsnum06/jw01476006001_02201_00001_guider1_cal.fits --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir test -vvv --refcat hawki --saveplots -tt -pp  --histocut_order dxdy --objmag_lim 17 24 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d_rotated_Nsigma 0.0 --sip_err 1.0
+
+### HAWKI!!! ###
+
+
+X
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum06 --input_files 'jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/v2v3ref' --outsubdir hawki_v1 -vvv --refcat hawki --saveplots -tt --histocut_order dxdy --objmag_lim 17 23.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d_rotated_Nsigma 0.0 --sip_err 1.0
+
+X
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01476/obsnum06 --input_files 'jw*guider*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/v2v3ref' --outsubdir hawki_v1 -vvv --refcat hawki --saveplots -tt --histocut_order dxdy --objmag_lim 17 23.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d_rotated_Nsigma 0.0 --sip_err 1.0
+
+X
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/04447/obsnum02 --input_files 'jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/v2v3ref' --outsubdir hawki_v1 -vvv --refcat hawki --saveplots -tt --histocut_order dxdy --objmag_lim 17 23.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d_rotated_Nsigma 0.0 --sip_err 1.0
+
+X
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/04447/obsnum02 --input_files 'jw*guider*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/v2v3ref' --outsubdir hawki_v1 -vvv --refcat hawki --saveplots -tt --histocut_order dxdy --objmag_lim 17 23.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d_rotated_Nsigma 0.0 --sip_err 1.0
+
+X
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01074/obsnum01 --input_files 'jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/v2v3ref' --outsubdir hawki_v1 -vvv --refcat hawki --saveplots -tt --histocut_order dxdy --objmag_lim 17 23.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d_rotated_Nsigma 0.0 --sip_err 1.0
+
+X
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download/01074/obsnum01 --input_files 'jw*guider*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat/v2v3ref' --outsubdir hawki_v1 -vvv --refcat hawki --saveplots -tt --histocut_order dxdy --objmag_lim 17 23.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d_rotated_Nsigma 0.0 --sip_err 1.0
+
+TEST:
+calc_jwst_fpa_alignment.py --fgs_fil jw04447002001_08201_00001_guider1_jhat.fits
+Creating siaf aperture for FGS FGS1_FULL
+/Volumes/Ext1/jhat/v2v3ref/hawki_v1/jw04447002001_08101_00001_nrca1_jhat.fits /Volumes/Ext1/jhat/v2v3ref/hawki_v1/jw04447002001_08201_00001_guider1_jhat.fits
+FGS center: 80.52651853800529,-69.44516971036346
+NIRCam center: 80.48143285638015,-69.49571562512239
+fgs_V3IdlYAngle: -1.2508099750292274 (nominal fgs_V3IdlYAngle:-1.24120427177907)
+nrc_V3IdlYAngle: -0.5464111503326023
+nrc_V3IdlYAngle_ref:-0.5368054470824448
+detector filter V3IdlYAngle_mean V3IdlYAngle_mean_err V3IdlYAngle_stdev V3IdlYAngle_Ngood V3IdlYAngle_Nclip    V2Ref_mean V2Ref_mean_err V2Ref_stdev V2Ref_Ngood V2Ref_Nclip    V3Ref_mean V3Ref_mean_err V3Ref_stdev V3Ref_Ngood V3Ref_Nclip
+   nrca1  f070w      -0.53680545                  NaN               NaN                 1                 0  120.87092146            NaN         NaN           1           0 -527.36870242            NaN         NaN           1           0
+   nrca2  f070w      -0.18967299                  NaN               NaN                 1                 0  120.14476965            NaN         NaN           1           0 -459.64051424            NaN         NaN           1           0
+   nrca3  f070w       0.30415146                  NaN               NaN                 1                 0   52.23583078            NaN         NaN           1           0 -527.67251515            NaN         NaN           1           0
+   nrca4  f070w       0.11086325                  NaN               NaN                 1                 0   52.75587404            NaN         NaN           1           0 -459.64108540            NaN         NaN           1           0
+   nrca5  f444w      -0.04541264                  NaN               NaN                 1                 0   86.28552929            NaN         NaN           1           0 -493.30830954            NaN         NaN           1           0
+   nrcb1  f070w       0.35473040                  NaN               NaN                 1                 0 -122.02015976            NaN         NaN           1           0 -457.16232216            NaN         NaN           1           0
+   nrcb2  f070w       0.85946374                  NaN               NaN                 1                 0 -122.38345463            NaN         NaN           1           0 -524.86241416            NaN         NaN           1           0
+   nrcb3  f070w      -0.43779030                  NaN               NaN                 1                 0  -54.21004622            NaN         NaN           1           0 -457.27195000            NaN         NaN           1           0
+   nrcb4  f070w      -0.32339036                  NaN               NaN                 1                 0  -54.10324302            NaN         NaN           1           0 -525.18729683            NaN         NaN           1           0
+   nrcb5  f444w       0.03912895                  NaN               NaN                 1                 0  -89.05028606            NaN         NaN           1           0 -490.86366095            NaN         NaN           1           0
+
+
+ calc_jwst_fpa_alignment.py  --savetable nircam_v2v3_v1.txt
+    /Volumes/Ext1/jhat/v2v3ref/hawki_v1/jw01476006004_06101_00002_nrca1_jhat.fits nrca1_full  f200w  120.193328 -527.600536           -0.548073 206.268888 -697.563831         -1.25081  120.331439 -527.801705    -0.538467
+   /Volumes/Ext1/jhat/v2v3ref/hawki_v1/jw04447002001_06101_00001_nrca1_jhat.fits nrca1_full  f200w  120.931765 -528.044950           -0.548073 206.390171 -698.318077         -1.25081  120.948593 -527.491873    -0.538467
+
+ calc_jwst_fpa_alignment_test.py  --savetable nircam_v2v3_test.txt --fgs_filepatterns jw01476006004_06201_00002_guider1_jhat.fits jw04447002001_06201_00001_guider1_jhat.fits --detectors nrca1
+
+calc_jwst_fpa_alignment.py  --savetable nircam_v2v3_test2.txt --fgs_filepatterns jw01476006004_06201_00002_guider1_jhat.fits jw04447002001_06201_00001_guider1_jhat.fits --detectors nrca1
+
+ calc_jwst_fpa_alignment.py  --savetable nircam_v2v3_v2.txt --detectors nrca1 --filt f200w -v
+
+calc_jwst_fpa_alignment.py  --savetable nircam_v2v3_20230819.txt  -v
+
+### hst!!! ###
+run_st_wcs_align.py  /Volumes/Ext1/download/01476/obsnum06/jw01476006001_02101_00001_nrcblong_cal.fits --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir test -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt -pp  --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0
+
+run_st_wcs_align.py  /Volumes/Ext1/download/01073/obsnum04/jw01073004001_02101_00002_nrcblong_cal.fits --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir test -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt -pp  --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0 
+
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0 --filt F444W  --outsubdir hst_vp/f444w
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0 --filt F277W  --outsubdir hst_vp/f277w
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0 --filt F150W  --outsubdir hst_vp/f150w
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0  --filt F200W  --outsubdir hst_vp/f200w
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0  --filt F070W  --outsubdir hst_vp/f070w
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0  --filt F090W  --outsubdir hst_vp/f090w
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0  --filt F115W  --outsubdir hst_vp/f115w
+
+TEST!!!
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw01074003002_06101_00003_nrca1*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0  --filt F150W  --outsubdir hst_vp --addfilter2outsubdir
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0   --outsubdir hst_vp  --addfilter2outsubdir   --filt F115W F210M F335M F356W 
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0   --outsubdir hst_vp  --addfilter2outsubdir   --filt F115W F210M F335M F356W 
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0   --outsubdir hst_vp  --addfilter2outsubdir   --filt F140M F150W2 F182M F187N F210M  F212N
+
+run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0   --outsubdir hst_vp  --addfilter2outsubdir   --filt  F410M F430M F460M F480M F250M F300M F322W2 F356W F360M F335M
