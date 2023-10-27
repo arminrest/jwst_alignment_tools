@@ -168,3 +168,7 @@ run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/o
 run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0   --outsubdir hst_vp  --addfilter2outsubdir   --filt F140M F150W2 F182M F187N F210M  F212N
 
 run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/obsnum*/jw*nrc*_cal.fits'  --outrootdir '/Volumes/Ext1/jhat' -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0   --outsubdir hst_vp  --addfilter2outsubdir   --filt  F410M F430M F460M F480M F250M F300M F322W2 F356W F360M F335M
+
+v2v3ref.py nrca1_full ./NIRCam_SIAF.prd51.xml
+v2v3ref.py nrca1_full ./v2v3_results/nircam_v2v3_v3.mean.txt  --filt F210m --progID 04447
+
