@@ -172,5 +172,4 @@ run_st_wcs_align_batch.py --input_dir  /Volumes/Ext1/download --input_files '*/o
 v2v3ref.py nrca1_full ./NIRCam_SIAF.prd51.xml
 v2v3ref.py nrca1_full ./v2v3_results/nircam_v2v3_v3.mean.txt  --filt F210m --progID 04447
 
-
-
+python calc_fpa2fpa_alignment.py testimages/jw01476006004_06201_00002_guider1_jhat.fits testimages/jw01476006004_06101_00002_nrca1_jhat.fits -vvvv
