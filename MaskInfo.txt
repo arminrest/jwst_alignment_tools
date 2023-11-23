@@ -1,0 +1,2 @@
+  aperture filter   pupil  y_transition  y_step_pixels  y_cut_min  y_cut_max  y_cut_top_edge
+nrca5_full  f335m maskrnd          1490           0.45       1450       1550            1750
