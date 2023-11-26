@@ -173,3 +173,10 @@ v2v3ref.py nrca1_full ./NIRCam_SIAF.prd51.xml
 v2v3ref.py nrca1_full ./v2v3_results/nircam_v2v3_v3.mean.txt  --filt F210m --progID 04447
 
 python calc_fpa2fpa_alignment.py testimages/jw01476006004_06201_00002_guider1_jhat.fits testimages/jw01476006004_06101_00002_nrca1_jhat.fits -vvvv
+
+python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 --nircam_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -vv
+
+python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 --nircam_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -vv --v2v3refvalues 206.407 -697.765 -1.24120427
+
+
+

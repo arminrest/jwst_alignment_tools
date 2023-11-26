@@ -82,9 +82,6 @@ class fpa2fpa_alignmentclass(pdastroclass):
 
         parser.add_argument('--siaf_file', default=None, help='pass the siaf file for the nominal SRC V2/V3ref info for the source image. This can be a standard xml file or one of the siaf txt files. If None, then the V2/V3ref info is determined using the siaf aperture python module')
         parser.add_argument('--v2v3refvalues', type=float, nargs=3, default=None, help='pass the desired, nominal V2ref, V3ref, and V3IdlYAngle for the source image. This supercedes --siaf_file')
-        #parser.add_argument('--filter', type=str, help='select filter. Only if siaf_file is defined, and the file has a "filter" column')
-        #parser.add_argument('--pupil', type=str, help='select pupil. Only if siaf_file is defined, and the file has a "pupil" column')
-        #parser.add_argument('--progID', type=str, help='select progID. Only if siaf_file is defined, and the file has a "progID" column')
 
         parser.add_argument('-v','--verbose', default=0, action='count')
 
@@ -459,7 +456,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
                                                self.t.loc[src_ixs[2],'v2rot'],self.t.loc[src_ixs[2],'v3rot'])
 #            self.t.loc[src_ixs[2],'v2rot']-self.t.loc[src_ixs[1],'v2rot'], 
 #                                               self.t.loc[src_ixs[2],'v3rot']-self.t.loc[src_ixs[1],'v3rot'])
-        print(f'SRC rotated V3YIdlangle {src_V3IdlYAngle_rot:.8f} from {src_V3IdlYAngle:.8f} (nominal: {self.src_nominal_V3IdlYAngle:.8f}, siaf: {self.src_aperture.V3IdlYAngle:.8f})')
+        if self.verbose: print(f'SRC rotated V3YIdlangle {src_V3IdlYAngle_rot:.8f} from {src_V3IdlYAngle:.8f} (nominal: {self.src_nominal_V3IdlYAngle:.8f}, siaf: {self.src_aperture.V3IdlYAngle:.8f})')
 
         # error checking: did the rotation and offset work, i.e., are the 3 v2v3 positions now consistent with the desired nominal v2ref, v3ref and V3IdlYAngle?
         tolerance = 0.0000001
@@ -486,7 +483,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
         self.new_trg_V3ref = self.t.loc[trg_ixs[0],"v3rot"]
         
         if self.verbose:
-            print('######\n###### Results:\n######')
+            print('\n######\n###### Results:\n######')
             print(f'{self.trg_aperture.AperName} {self.trg_filter} {self.trg_pupil} V2Ref: {self.new_trg_V2ref:10.4f} (siaf: {self.trg_aperture.V2Ref:10.4f}, difference {self.new_trg_V2ref-self.trg_aperture.V2Ref:7.4f})')
             print(f'{self.trg_aperture.AperName} {self.trg_filter} {self.trg_pupil} V3Ref: {self.new_trg_V3ref:10.4f} (siaf: {self.trg_aperture.V3Ref:10.4f}, difference {self.new_trg_V3ref-self.trg_aperture.V3Ref:7.4f})')
             #self.t.loc[trg_ixs[2],'v2rot']-self.t.loc[trg_ixs[1],'v2rot'], 
@@ -502,14 +499,14 @@ class fpa2fpa_alignmentclass(pdastroclass):
         ###
         
         # first initialise the source
-        fpa2fpa.initialize_src(srcfilename)
+        self.initialize_src(srcfilename)
         # set the source V2/V3ref and V3IdlYAngle
         # if no siaf_file is passed, then the V2V3info is taken from the siaf aperture.
         # siaf_file can be a siaf xml file of one of the siaf text files in the format from this package
         # note: if the v2v3info is read in from a siaf text file, then it will get it for the source filter and pupil!!!
-        fpa2fpa.get_nominal_v2v3info(siaf_file = siaf_file, v2v3refvalues=v2v3refvalues)
+        self.get_nominal_v2v3info(siaf_file = siaf_file, v2v3refvalues=v2v3refvalues)
         # initialize the target
-        fpa2fpa.initialize_trg(trgfilename)
+        self.initialize_trg(trgfilename)
         
         
         

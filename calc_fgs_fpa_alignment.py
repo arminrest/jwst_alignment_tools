@@ -19,6 +19,7 @@ import astropy.units as u
 from pdastro import pdastroclass
 from astropy.modeling.rotations import Rotation2D
 import numpy as np
+from calc_fpa2fpa_alignment import fpa2fpa_alignmentclass
 
 def append2file(filename,lines,verbose=0):
     if type(lines) is str:#types.StringType:
@@ -81,9 +82,7 @@ def define_options(parser=None,usage=None,conflict_handler='resolve'):
     parser.add_argument('--detectors', type=str, choices = ['nrca1','nrca2','nrca3','nrca4','nrca5','nrcb1','nrcb2','nrcb3','nrcb4','nrcb5'], default=None, nargs="+", help='list of detectors (default=%(default)s)')
     parser.add_argument('--filters', type=str, default=None, nargs="+", help='list of filters (default=%(default)s)')
     parser.add_argument('--pupils', type=str, default=None, nargs="+", help='list of pupils (default=%(default)s)')
-
-    parser.add_argument('--set_fgs_v2v3ref_manually', default=False, action='store_true', help='Set the FGS v2/v3ref manually in the code. Otherwise the siaf aperture routines are used!')
-
+    parser.add_argument('--progIDs', type=int, default=None, nargs="+", help='list of progIDs (default=%(default)s)')
 
     parser.add_argument('--maxin', type=int, default=None, help='constraint the # of images (good for testing/debugging) (default=%(default)s)')
     parser.add_argument('--skip_if_exists', default=False, action='store_true', help='Don\'t reanalyze if outsubdir/focal_plane_calibration already exists')
@@ -105,7 +104,6 @@ def calc_averages(v2v3,v2v3params=['V3IdlYAngle','V2Ref','V3Ref'],progIDs0=None,
     apertures.sort()
     
     v2v3.write(indices=ixs)
-    print('VVVVVV',apertures)
     
     for aperture in apertures:
         if verbose: print(f'### aperture {aperture}')
@@ -123,9 +121,7 @@ def calc_averages(v2v3,v2v3params=['V3IdlYAngle','V2Ref','V3Ref'],progIDs0=None,
     
         for filt in filts:
             ixs_filt = v2v3.ix_equal('filter',filt.lower(),indices=ixs_aper)
-            print('aaa')
             v2v3.write(indices=ixs_aper)
-            print('bbb')
             v2v3.write(indices=ixs_filt)
             if len(ixs_filt)==0:
                 print(f'Warning: skipping filter {filt} for aperture {aperture} since there are no entries!')
@@ -136,7 +132,6 @@ def calc_averages(v2v3,v2v3params=['V3IdlYAngle','V2Ref','V3Ref'],progIDs0=None,
                 progIDs.append('all')
             else:
                 progIDs = progIDs0
-            print('VVVV',progIDs)
             progIDs.sort()
             
             
@@ -190,31 +185,19 @@ def get_files(filepatterns,directory=None,verbose=1):
     if verbose: print(f'Found {len(filenames)} files matching filepatterns {filepatterns}')
     return(filenames)
 
-if __name__ == '__main__':
-    parser = define_options()
-    args = parser.parse_args()
-   
-    if args.set_fgs_v2v3ref_manually:
-        print('Setting FGS V2/V3ref manually!')
-        ####################################################################
-        ## MAKE SURE THE 3 FGS REFERENCE VALUES BELOW ARE UP TO DATE!!!!
-        ####################################################################
-        # Current values are taken from here:
-        # https://github.com/spacetelescope/pysiaf/blob/master/pysiaf/prd_data/JWST/PRDOPSSOC-051/SIAFXML/Excel/FGS_SIAF.xlsx
-        fgs_v2ref_nominal = 206.407
-        fgs_v3ref_nominal = -697.765
-        fgs_V3IdlYAngle_nominal = -1.24120427
-    else:
-        print('Getting FGS V2/V3ref from siaf apertures!')
-        fgs_siaf = pysiaf.Siaf('FGS') 
-        fgs_aperture= fgs_siaf.apertures[args.fgs_apername]
-        fgs_v2ref_nominal = fgs_aperture.V2Ref
-        fgs_v3ref_nominal = fgs_aperture.V3Ref
-        fgs_V3IdlYAngle_nominal = fgs_aperture.V3IdlYAngle
+#####################################################################
+#####################################################################
+#####################################################################
 
-    print(f'nominal FGS V2Ref: {fgs_v2ref_nominal}')
-    print(f'nominal FGS V3Ref: {fgs_v3ref_nominal}')
-    print(f'nominal FGS V3IdlYAngle: {fgs_V3IdlYAngle_nominal}')
+if __name__ == '__main__':
+    
+    fpa2fpa = fpa2fpa_alignmentclass()
+    
+    parser = define_options()
+    parser = fpa2fpa.define_options(parser=parser)
+
+    args = parser.parse_args()
+    fpa2fpa.verbose=args.verbose
     
     fgstable = pdastrostatsclass()
     nrctable = pdastrostatsclass(columns=['nrc_filename','fgs_filename','detector','aperture','filter','pupil'])
@@ -265,8 +248,16 @@ if __name__ == '__main__':
             except:
                 print(f'{nrc_filename} corrupt, skipping...')
                 continue
+            
+            m = re.search('^jw(\d\d\d\d\d)',os.path.basename(nrc_filename))
+            if m is not None:
+                progID = int(m.groups()[0])
+            else:
+                progID = 0
+
                 
-            ix_nrc = nrctable.newrow({'nrc_filename':nrc_filename,
+            ix_nrc = nrctable.newrow({'progID':progID,
+                                      'nrc_filename':nrc_filename,
                                       'fgs_filename':fgstable.t.loc[ix,"fgs_filename"],
                                       'instrument':imhdr["INSTRUME"].lower(),
                                       'detector':re.sub('long$','5',imhdr['DETECTOR'].lower()),
@@ -279,26 +270,39 @@ if __name__ == '__main__':
             #outsubdir = f'{nrctable.t.loc[ix_nrc,"detector"]}_{nrctable.t.loc[ix_nrc,"filter"]}_{nrctable.t.loc[ix_nrc,"pupil"]}_' \
             #    +re.sub('_nrc\w+\_cal\.fits$','',os.path.basename(nrc_filename))
             #nrctable.t.loc[ix_nrc,'outsubdir']=outsubdir
-                
+               
+    nrctable.write()
+            
     ixs_nrc = nrctable.getindices()
+    print(f'{len(ixs_nrc)} images associated with the fgs images!')
     
     # cut in detector, filter, and pupil
     if args.detectors is not None:
         ixs_tmp = []
         for detector in args.detectors:
             ixs_tmp.extend(nrctable.ix_equal('detector',detector.lower(),indices=ixs_nrc))
+        print(f'Cutting {len(ixs_nrc)-len(ixs_tmp)} from {len(ixs_nrc)} because of detector={args.detectors}, leaving {len(ixs_tmp)}!')
         ixs_nrc = ixs_tmp
 
     if args.filters is not None:
         ixs_tmp = []
         for filt in args.filters:
             ixs_tmp.extend(nrctable.ix_equal('filter',filt.lower(),indices=ixs_nrc))
+        print(f'Cutting {len(ixs_nrc)-len(ixs_tmp)} from {len(ixs_nrc)} because of filter={args.filters}, leaving {len(ixs_tmp)}!')
         ixs_nrc = ixs_tmp
 
     if args.pupils is not None:
         ixs_tmp = []
         for pupil in args.pupils:
             ixs_tmp.extend(nrctable.ix_equal('pupil',pupil.lower(),indices=ixs_nrc))
+        print(f'Cutting {len(ixs_nrc)-len(ixs_tmp)} from {len(ixs_nrc)} because of pupil={args.pupils}, leaving {len(ixs_tmp)}!')
+        ixs_nrc = ixs_tmp
+            
+    if args.progIDs is not None:
+        ixs_tmp = []
+        for progID in args.progIDs:
+            ixs_tmp.extend(nrctable.ix_equal('progID',progID,indices=ixs_nrc))
+        print(f'Cutting {len(ixs_nrc)-len(ixs_tmp)} from {len(ixs_nrc)} because of progID={args.progIDs}, leaving {len(ixs_tmp)}!')
         ixs_nrc = ixs_tmp
             
     if len(ixs_nrc)<1:
@@ -329,24 +333,6 @@ if __name__ == '__main__':
         print(f'Hmm, \'{do_it}\' is neither yes or no. Don\'t know what to do, so stopping ....')
         sys.exit(0)
 
-    ################################################################ 
-    # NOTE: the distortions are done so that in the center of the chip there are no distortions, 
-    # i.e. the y-axis of the ideal and science coordinate system are aligned.
-    # This means converting from ideal to science coordinates is not necessary, we can
-    # just use y+-dy as our anchor points for the determination of V3IdlYAngle
-    ################################################################ 
-    dy = 0.02 # difference in pixel to go into +- y-direction
-    
-    # get the center of FGS
-    print('Creating siaf aperture for FGS {args.fgs_apername}')
-    fgs_siaf = pysiaf.Siaf('FGS') 
-    fgs_aperture= fgs_siaf.apertures[args.fgs_apername]
-    fgs_x0=fgs_aperture.XSciRef-1.0
-    fgs_y0=fgs_aperture.YSciRef-1.0
-#    print(f'{args.fgs_apername} V2Ref: {fgs_aperture.V2Ref}')
-#    print(f'{args.fgs_apername} V3Ref: {fgs_aperture.V3Ref}')
-#    print(f'{args.fgs_apername} V3IdlYAngle: {fgs_aperture.V3IdlYAngle}')
-
 
     for ix_nrc in ixs_nrc:
         print(f'\n############################################ {nrctable.t.loc[ix_nrc,"detector"]}\n',nrctable.t.loc[ix_nrc,"nrc_filename"],nrctable.t.loc[ix_nrc,"fgs_filename"])
@@ -357,123 +343,12 @@ if __name__ == '__main__':
             progID = None
         nrctable.t.loc[ix_nrc,'progID']=progID
         
-        # get the center of the detector
-        nrc_siaf = pysiaf.Siaf(nrctable.t.loc[ix_nrc,'instrument'].lower()) 
-        nrc_aperture= nrc_siaf.apertures[nrctable.t.loc[ix_nrc,'aperture'].upper()]
-        nrc_x0=nrc_aperture.XSciRef-1.0
-        nrc_y0=nrc_aperture.YSciRef-1.0
-        print(f'{nrctable.t.loc[ix_nrc,"aperture"]} V2Ref: {nrc_aperture.V2Ref}')
-        print(f'{nrctable.t.loc[ix_nrc,"aperture"]} V3Ref: {nrc_aperture.V3Ref}')
-        print(f'{nrctable.t.loc[ix_nrc,"aperture"]} V3IdlYAngle: {nrc_aperture.V3IdlYAngle}')
-        
-        
-        try:
-            # Get the FGS model and determine the ra,dec of the detector center
-            fgs_model = datamodels.ImageModel(nrctable.t.loc[ix_nrc,"fgs_filename"])
-            fgs_detector_to_world=fgs_model.meta.wcs.get_transform('detector', 'world') 
-            fgs_detector_to_v2v3=fgs_model.meta.wcs.get_transform('detector', 'v2v3') 
-            fgs_world_to_v2v3=fgs_model.meta.wcs.get_transform('world','v2v3') 
-            #fgs_ra,fgs_dec = fgs_detector_to_world(x0,y0)
-            #print(f'FGS center: {fgs_ra},{fgs_dec}')
-        except:
-            print(f'Something went wrong with FGS {nrctable.t.loc[ix_nrc,"fgs_filename"]}, skipping...')
-            nrctable.t.loc[ix_nrc,"errorflag"]=1
-            continue
-        
-        try:
-            # Get the NIRCam model and determine the ra,dec of the detector center
-            nrc_model = datamodels.ImageModel(nrctable.t.loc[ix_nrc,"nrc_filename"])
-            nrc_detector_to_world=nrc_model.meta.wcs.get_transform('detector', 'world') 
-        except:
-            print(f'Something went wrong with FGS {nrctable.t.loc[ix_nrc,"nrc_filename"]}, skipping...')
-            nrctable.t.loc[ix_nrc,"errorflag"]=1
-            continue
-         
-        # SANITY CHECK!
-        if fgs_model.meta.instrument.name != 'FGS' or fgs_model.meta.aperture.name != args.fgs_apername:
-            raise RuntimeError(f'reference image is not {args.fgs_apername}!!!!')
+        fpa2fpa.calc_trg_v2v3info(nrctable.t.loc[ix_nrc,"fgs_filename"],
+                                  nrctable.t.loc[ix_nrc,"nrc_filename"],
+                                  args.siaf_file,
+                                  args.v2v3refvalues)
 
-        v2v3list = pdastroclass()
-        dy = 0.02 # difference in pixel to go into +- y-direction to calculate V3YIdlAngle
- 
-        ################################################
-        # calculate FGS V2/V3ref and V3IdlYAngle of image, and compare to nominal values
-        # caluclate FGS V2/V3 for center pixel +- dy
-        # save the V2/V3 coordinates in v2v3list
-        ################################################
-        fgs_v2_0,fgs_v3_0 = fgs_detector_to_v2v3(fgs_x0,fgs_y0)
-        print(f'V2/V3ref siaf    {fgs_aperture.V2Ref:.4f} {fgs_aperture.V3Ref:.4f}')
-        print(f'V2/V3ref nominal {fgs_v2ref_nominal:.4f} {fgs_v3ref_nominal:.4f}')
-        print(f'V2/V3ref center  {fgs_v2_0:.4f} {fgs_v3_0:.4f}')
-        fgs_v2_1,fgs_v3_1 = fgs_detector_to_v2v3(fgs_x0,fgs_y0+dy)
-        fgs_v2_2,fgs_v3_2 = fgs_detector_to_v2v3(fgs_x0,fgs_y0-dy)
-        
-        fgs_ix_0 = v2v3list.newrow({'name':'fgs_v2v3_0','v2':fgs_v2_0,'v3':fgs_v3_0})
-        fgs_ix_1 = v2v3list.newrow({'name':'fgs_v2v3_1','v2':fgs_v2_1,'v3':fgs_v3_1})
-        fgs_ix_2 = v2v3list.newrow({'name':'fgs_v2v3_2','v2':fgs_v2_2,'v3':fgs_v3_2})
-        fgs_V3IdlYAngle = np.degrees(np.arctan2(v2v3list.t.loc[fgs_ix_2,'v2']-v2v3list.t.loc[fgs_ix_1,'v2'], 
-                                                v2v3list.t.loc[fgs_ix_2,'v3']-v2v3list.t.loc[fgs_ix_1,'v3']))
-        if fgs_V3IdlYAngle>90.0: fgs_V3IdlYAngle-=180
-        if fgs_V3IdlYAngle<-90.0: fgs_V3IdlYAngle+=180
-        print(f'V3YIdlangle {fgs_V3IdlYAngle:.8f} (nominal: {fgs_V3IdlYAngle_nominal:.8f}, siaf: {fgs_aperture.V3IdlYAngle:.8f})')
-
-        ################################################
-        # Convert x,y center of NIRCam into Ra,Dec, and then use FGS model to calculate the corresponding V2/V3 coordinates
-        # Do the same with center +- dy pixels
-        ################################################       
-        nrc_ra_0,nrc_dec_0 = nrc_detector_to_world(nrc_x0,nrc_y0)
-        nrc_ra_1,nrc_dec_1 = nrc_detector_to_world(nrc_x0,nrc_y0+dy)
-        nrc_ra_2,nrc_dec_2 = nrc_detector_to_world(nrc_x0,nrc_y0-dy)
-        nrc_v2_0,nrc_v3_0 = fgs_world_to_v2v3(nrc_ra_0,nrc_dec_0)
-        nrc_v2_1,nrc_v3_1 = fgs_world_to_v2v3(nrc_ra_1,nrc_dec_1)
-        nrc_v2_2,nrc_v3_2 = fgs_world_to_v2v3(nrc_ra_2,nrc_dec_2)
-        nrc_ix_0 = v2v3list.newrow({'name':'nrc_v2v3_0','v2':nrc_v2_0,'v3':nrc_v3_0})
-        nrc_ix_1 = v2v3list.newrow({'name':'nrc_v2v3_1','v2':nrc_v2_1,'v3':nrc_v3_1})
-        nrc_ix_2 = v2v3list.newrow({'name':'nrc_v2v3_2','v2':nrc_v2_2,'v3':nrc_v3_2})
-
-        ################################################
-        # Rotate the V2/V3 so that the center FGS pixel and V3IdlYAngle agree with siaf
-        ################################################
-        R = Rotation2D()
-        # calculate the differences in v2/v3 with respect to the center pixel v2/v3
-        v2diff=np.array(v2v3list.t['v2']-v2v3list.t.loc[fgs_ix_0,'v2'])
-        v3diff=np.array(v2v3list.t['v3']-v2v3list.t.loc[fgs_ix_0,'v3'])
-        # calculate the correction angle between the true fgs_V3IdlYAngle and the nominal one
-        angle = fgs_V3IdlYAngle-fgs_V3IdlYAngle_nominal
-        # Rotate the v2/v3 values, and add the *nominal* v2/v3 values
-        (v2diffrot,v3diffrot) = R.evaluate(v2diff,v3diff,angle*u.deg)
-        v2v3list.t['v2rot']=v2diffrot+fgs_v2ref_nominal
-        v2v3list.t['v3rot']=v3diffrot+fgs_v3ref_nominal
-        v2v3list.write()
-        
-        ################################################
-        # some checks to make sure there are no bugs!
-        ################################################
-        # This is just a check: the new fgs_V3IdlYAngle should now be equal to the nominal one!!
-        fgs_V3IdlYAngle_rot = np.degrees(np.arctan2(v2v3list.t.loc[fgs_ix_2,'v2rot']-v2v3list.t.loc[fgs_ix_1,'v2rot'], 
-                                                    v2v3list.t.loc[fgs_ix_2,'v3rot']-v2v3list.t.loc[fgs_ix_1,'v3rot']))
-        if fgs_V3IdlYAngle_rot>90.0: fgs_V3IdlYAngle_rot-=180
-        if fgs_V3IdlYAngle_rot<-90.0: fgs_V3IdlYAngle_rot+=180
-        print(f'FGS rotated V3YIdlangle {fgs_V3IdlYAngle_rot:.8f} from {fgs_V3IdlYAngle:.8f} (nominal: {fgs_V3IdlYAngle_nominal:.8f})')
-        if np.fabs(fgs_V3IdlYAngle_rot-fgs_V3IdlYAngle_nominal)>0.000001:
-            raise RuntimeError(f'rotated V3IdlYAngle {fgs_V3IdlYAngle_rot:.8f} is different from nominal {fgs_V3IdlYAngle_nominal:.8f}')
-        # another check, make sure FGS V2/V3ref are equal to nominal V2/V3ref after rotation!
-        if np.fabs(v2v3list.t.loc[fgs_ix_0,'v2rot']-fgs_v2ref_nominal)>0.000001:
-            raise RuntimeError(f'rotated v2 {v2v3list.t.loc[fgs_ix_0,"v2rot"]:.6f} is different from nominal {fgs_v2ref_nominal:.6f}')
-        if np.fabs(v2v3list.t.loc[fgs_ix_0,'v3rot']-fgs_v3ref_nominal)>0.000001:
-            raise RuntimeError(f'rotated v2 {v2v3list.t.loc[fgs_ix_0,"v3rot"]:.6f} is different from nominal {fgs_v3ref_nominal:.6f}')
-
-        ################################################
-        # show the results and save it in the nrctable
-        ################################################
-        print('### Results:')
-        print(f'{nrctable.t.loc[ix_nrc,"aperture"]} V2Ref: {v2v3list.t.loc[nrc_ix_0,"v2rot"]:.4f} (nominal: {nrc_aperture.V2Ref:.4f})')
-        print(f'{nrctable.t.loc[ix_nrc,"aperture"]} V3Ref: {v2v3list.t.loc[nrc_ix_0,"v3rot"]:.4f} (nominal: {nrc_aperture.V3Ref:.4f})')
-        nrc_V3IdlYAngle = np.degrees(np.arctan2(v2v3list.t.loc[nrc_ix_2,'v2rot']-v2v3list.t.loc[nrc_ix_1,'v2rot'], 
-                                                v2v3list.t.loc[nrc_ix_2,'v3rot']-v2v3list.t.loc[nrc_ix_1,'v3rot']))
-        if nrc_V3IdlYAngle>90.0: nrc_V3IdlYAngle-=180
-        if nrc_V3IdlYAngle<-90.0: nrc_V3IdlYAngle+=180
-        print(f'{nrctable.t.loc[ix_nrc,"aperture"]} V3YIdlangle {nrc_V3IdlYAngle} (nominal: {nrc_aperture.V3IdlYAngle})')
+        sys.exit(0)
 
         ###### Add the results to the  nircam table
         nrctable.add2row(ix_nrc,{'NRC_V2':v2v3list.t.loc[nrc_ix_0,"v2"],
