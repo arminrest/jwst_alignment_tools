@@ -11,13 +11,13 @@ import sys, argparse,glob,re,os
 from pdastro import pdastrostatsclass,unique,makepath4file
 from astropy.io import fits
 from subprocess import Popen, PIPE, STDOUT
-from jwst import datamodels
-import pysiaf
+#from jwst import datamodels
+#import pysiaf
 #from astropy.io import fits
-from astropy.coordinates import SkyCoord
-import astropy.units as u
+#from astropy.coordinates import SkyCoord
+#import astropy.units as u
 from pdastro import pdastroclass
-from astropy.modeling.rotations import Rotation2D
+#from astropy.modeling.rotations import Rotation2D
 import numpy as np
 from calc_fpa2fpa_alignment import fpa2fpa_alignmentclass
 
@@ -91,11 +91,12 @@ def define_options(parser=None,usage=None,conflict_handler='resolve'):
 
     return(parser)
 
-def calc_averages(v2v3,v2v3params=['V3IdlYAngle','V2Ref','V3Ref'],progIDs0=None, apertures0=None,filts0=None, indices=None, format_params = '{:.8f}',verbose=1):
+def calc_averages(v2v3,v2v3params=['V3IdlYAngle','V2ref','V3ref'],progIDs0=None, apertures0=None,filts0=None, indices=None, format_params = '{:.8f}',verbose=1):
     mean_results = pdastrostatsclass()
     
     # remove empty rows
-    ixs = v2v3.ix_not_null(['progID','V2Ref'],indices=indices)
+    ixs = v2v3.ix_not_null(['progID'],indices=indices)
+    ixs = v2v3.ix_not_null(v2v3params,indices=ixs)
     
     if apertures0 is None:
         apertures = unique(v2v3.t.loc[ixs,'aperture'])
@@ -334,6 +335,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
 
+    errors = []
     for ix_nrc in ixs_nrc:
         print(f'\n############################################ {nrctable.t.loc[ix_nrc,"detector"]}\n',nrctable.t.loc[ix_nrc,"nrc_filename"],nrctable.t.loc[ix_nrc,"fgs_filename"])
         m = re.search('^jw(\d\d\d\d\d)',os.path.basename(nrctable.t.loc[ix_nrc,"nrc_filename"]))
@@ -343,14 +345,32 @@ if __name__ == '__main__':
             progID = None
         nrctable.t.loc[ix_nrc,'progID']=progID
         
-        fpa2fpa.calc_trg_v2v3info(nrctable.t.loc[ix_nrc,"fgs_filename"],
-                                  nrctable.t.loc[ix_nrc,"nrc_filename"],
-                                  args.siaf_file,
-                                  args.v2v3refvalues)
-
-        sys.exit(0)
+        # Clear the previous info from fpa2fpa, with the exception of the siaf apertures which might be reused 
+        fpa2fpa.clear()
+        
+        try:
+            fpa2fpa.calc_trg_v2v3info(nrctable.t.loc[ix_nrc,"fgs_filename"],
+                                      nrctable.t.loc[ix_nrc,"nrc_filename"],
+                                      args.siaf_file,
+                                      args.v2v3refvalues)
+        except:
+            errorstring=f'!!!!!!   ERROR with {nrctable.t.loc[ix_nrc,"nrc_filename"]}   !!!!!!!!!!!!!!!'
+            print(f'{errorstring}: skipping!!')
+            errors.append(errorstring)
+            continue
 
         ###### Add the results to the  nircam table
+        nrctable.add2row(ix_nrc,{'fgs_V2ref':fpa2fpa.src_nominal_V2ref,
+                                 'fgs_V3ref':fpa2fpa.src_nominal_V3ref,
+                                 'fgs_V3IdlYAngle':fpa2fpa.src_nominal_V3IdlYAngle,
+                                 'V2ref':fpa2fpa.new_trg_V2ref,
+                                 'V3ref':fpa2fpa.new_trg_V3ref,
+                                 'V3IdlYAngle':fpa2fpa.new_trg_V3IdlYAngle,
+                                 'siaf_V2ref':fpa2fpa.trg_aperture.V2Ref,
+                                 'siaf_V3ref':fpa2fpa.trg_aperture.V3Ref,
+                                 'siaf_V3IdlYAngle':fpa2fpa.trg_aperture.V3IdlYAngle
+                                 })
+        """                       
         nrctable.add2row(ix_nrc,{'NRC_V2':v2v3list.t.loc[nrc_ix_0,"v2"],
                                  'NRC_V3':v2v3list.t.loc[nrc_ix_0,"v3"],
                                  'FGS_V2':v2v3list.t.loc[fgs_ix_0,'v2'],
@@ -360,7 +380,7 @@ if __name__ == '__main__':
                                  'V3Ref':v2v3list.t.loc[nrc_ix_0,"v3rot"],
                                  'V3IdlYAngle':nrc_V3IdlYAngle
                                  })
-
+        """
 
         
 
@@ -368,9 +388,11 @@ if __name__ == '__main__':
     ################################################
     # save the nrctable
     ################################################
-    outcols = ['nrc_filename','progID','aperture','filter','NRC_V2','NRC_V3',
-               'FGS_V2','FGS_V3','FGS_V3IdlYAngle',
-               'V2Ref','V3Ref','V3IdlYAngle']
+    outcols = ['nrc_filename','progID','aperture','filter','pupil',
+               'fgs_V2ref','fgs_V3ref','fgs_V3IdlYAngle',
+               'V2ref','V3ref','V3IdlYAngle',
+               'siaf_V2ref','siaf_V3ref','siaf_V3IdlYAngle'
+               ]
     nrctable.write(indices=ixs_nrc,columns=outcols)  
     if args.savetable:
         print(f'Saving results table to {args.savetable}')
@@ -384,8 +406,15 @@ if __name__ == '__main__':
     #mean_results = calc_averages(nrctable)
     mean_results.write()
     if args.savetable:
-        outputfilename = re.sub('\.txt','.mean.txt',args.savetable)
-        if outputfilename == args.savetable:
-            raise RuntimeError(f'could not determine outputfilename from args.savetable={args.savetable}')
+        outputbasename = re.sub('\.txt','',args.savetable)
+        outputfilename = f'{outputbasename}.mean.txt'
         print(f'Saving averages into {outputfilename}')
         mean_results.write(outputfilename)
+
+        progIDs = unique(mean_results.t['progID'])
+        for progID in progIDs:
+            ixs_progID = mean_results.ix_equal(['progID'], progID)
+            outputfilename = f'{outputbasename}.progID_{progID}.mean.txt'
+            print(f'Saving averages into {outputfilename}')
+            mean_results.write(outputfilename,indices=ixs_progID)
+    

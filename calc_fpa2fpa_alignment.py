@@ -61,8 +61,11 @@ class fpa2fpa_alignmentclass(pdastroclass):
         self.src_model = None
         self.trg_model = None
         
+        self.src_apername = None
         self.src_filter = None
         self.src_pupil = None
+        
+        self.trg_apername = None
         self.trg_filter = None
         self.trg_pupil = None
         
@@ -73,6 +76,9 @@ class fpa2fpa_alignmentclass(pdastroclass):
         self.new_trg_V2ref = None
         self.new_trg_V3ref = None
         self.new_trg_V3IdlYAngle = None
+        
+        self.src_ixs = None
+        self.trg_ixs = None
 
         self.t = pd.DataFrame(columns=self.t.columns)
         
@@ -143,6 +149,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
         if  self.src_aperture.AperName.lower() != self.src_model.meta.aperture.name.lower():
             raise RuntimeError('Inconsistent apertures {self.src_aperture.AperName.lower()}!={self.src_model.meta.aperture.name.lower()}')            
         
+        self.src_apername = self.src_aperture.AperName.lower()
             
         return(0)
     
@@ -202,6 +209,8 @@ class fpa2fpa_alignmentclass(pdastroclass):
         if  self.trg_aperture.AperName.lower() != self.trg_model.meta.aperture.name.lower():
             raise RuntimeError('Inconsistent apertures {self.trg_aperture.AperName.lower()}!={self.trg_model.meta.aperture.name.lower()}')            
         
+        self.trg_apername = self.trg_aperture.AperName.lower()
+
         return(0)
     
     def get_nominal_v2v3info(self,siaf_file = None, v2v3refvalues=None):
@@ -262,7 +271,8 @@ class fpa2fpa_alignmentclass(pdastroclass):
             self.src_pupil
             self.src_siaf
             self.src_aperture
-            
+            self.src_apername
+           
         Parameters
         ----------
         srcfilename : string
@@ -306,6 +316,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
             self.trg_pupil
             self.trg_siaf
             self.trg_aperture
+            self.trg_apername
             
         Parameters
         ----------
@@ -523,24 +534,24 @@ class fpa2fpa_alignmentclass(pdastroclass):
         
         
         # first calculate the 3 v2/v3 positions for the source
-        src_ixs = self.calc_src_v2v3info()
+        self.src_ixs = self.calc_src_v2v3info()
         
         # now calculate the 3 v2/v3 positions for the target *** in the source v2/v3 system ***
-        trg_ixs = self.calc_trg_v2v3info_in_src_system()
+        self.trg_ixs = self.calc_trg_v2v3info_in_src_system()
         
         # Now rotate the v2/v3 position so that the source image v2/v3 system 
         # agrees with the desired nominal v2/v3ref and V3IdlYAngle specified in 
         # self.src_nominal_V2ref
         # self.src_nominal_V3ref
         # self.src_nominal_V3IdlYAngle
-        self.rotate_v2v3(src_ixs)
+        self.rotate_v2v3(self.src_ixs)
 
         # get the new v2v3 info for the target image
         # These are also saved in 
         # self.new_trg_V2ref
         # self.new_trg_V3ref
         # self.new_trg_V3IdlYAngle
-        (new_trg_V2ref,new_trg_V3ref,new_trg_V3IdlYAngle) = self.calc_new_v2v3info(src_ixs,trg_ixs)
+        (new_trg_V2ref,new_trg_V3ref,new_trg_V3IdlYAngle) = self.calc_new_v2v3info(self.src_ixs,self.trg_ixs)
         
         return(new_trg_V2ref,new_trg_V3ref,new_trg_V3IdlYAngle)
 

@@ -178,5 +178,18 @@ python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -
 
 python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 --nircam_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -vv --v2v3refvalues 206.407 -697.765 -1.24120427
 
+old:
+python calc_fgs_fpa_alignment.py --fgs_dir ./testimages --nircam_dir ./testimages --fgs_filepatterns 
 
+
+python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 --nircam_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -vv --progIDs 1476 4447 --filters f335m f210m
+
+python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 --nircam_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -vv --progIDs 1476 4447 --filters f335m f210m  --savetable v2v3results/f210mf335m/v2/f210mf335m_clear.v1.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 --nircam_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -vv --progIDs 1476 4447  --savetable v2v3results/all/v1/allfilters_clear.v1.txt
+
+### MASKS!!
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A5-F335M-RND -vv   --savetable v2v3results/masks_f335m/v1/mask_RND_f335m.v1.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A5-F335M-BAR -vv   --savetable v2v3results/masks_f335m/v1/mask_BAR_f335m.v1.txt
+
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A5-F335M-CLR -vv   --savetable v2v3results/masks_f335m/v1/mask_CLR_f335m.v1.txt
 
