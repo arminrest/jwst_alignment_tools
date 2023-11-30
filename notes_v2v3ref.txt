@@ -188,8 +188,35 @@ python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -
 python calc_fgs_fpa_alignment.py --fgs_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 --nircam_dir /Volumes/Ext1/jhat/v2v3ref/hawki_v1 -vv --progIDs 1476 4447  --savetable v2v3results/all/v1/allfilters_clear.v1.txt
 
 ### MASKS!!
+
+WRONG: Gaia instead of hawki
 python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A5-F335M-RND -vv   --savetable v2v3results/masks_f335m/v1/mask_RND_f335m.v1.txt
 python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A5-F335M-BAR -vv   --savetable v2v3results/masks_f335m/v1/mask_BAR_f335m.v1.txt
 
 python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A5-F335M-CLR -vv   --savetable v2v3results/masks_f335m/v1/mask_CLR_f335m.v1.txt
+
+A1:
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A1-F210M-RND-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A1-F210M-RND-GAIA.v1.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A1-F210M-RND-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A1-F210M-RND-GAIA.v2.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forBAR --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A1-F210M-BAR-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A1-F210M-BAR-GAIA.v1.txt
+
+A2:
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A2-F210M-RND-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A2-F210M-RND-GAIA.v1.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A2-F210M-RND-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A2-F210M-RND-GAIA.v2.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forBAR --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A2-F210M-BAR-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A2-F210M-BAR-GAIA .v1.txt
+
+A3:
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A3-F210M-RND-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A3-F210M-RND-GAIA.v1.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A3-F210M-RND-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A3-F210M-RND-GAIA.v2.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forBAR --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A3-F210M-BAR-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A3-F210M-BAR-GAIA.v1.txt
+
+A4:
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A4-F210M-RND-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A4-F210M-RND-GAIA.v1.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A4-F210M-RND-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A4-F210M-RND-GAIA.v2.txt
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forBAR --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A4-F210M-BAR-GAIA -vv   --savetable v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A4-F210M-BAR-GAIA.v1.txt
+
+hawki
+python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A2-F210M-RND-HAWKI -vv   --savetable v2v3results/masks_f210m/v2/mask_RND_f210m.v2.txt
+
+
 
