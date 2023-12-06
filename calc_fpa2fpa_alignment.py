@@ -4,6 +4,13 @@
 Created on Mon Oct 30 22:01:53 2023
 
 @author: arest
+
+Calculate the V2/V3 alignment (V2ref, V3ref, V3YIdlangle) of a target image using a source image
+
+The assumption is that the V2/V3 information in the source image is correct, and that the source
+and target image WCS is correctly aligned.
+
+
 """
 
 from jwst import datamodels
@@ -26,6 +33,20 @@ def calc_V3IdlYAngle(v2_1,v3_1,v2_2,v3_2):
     if V3IdlYAngle>90.0: V3IdlYAngle-=180.0
     if V3IdlYAngle<-90.0: V3IdlYAngle+=180.0
     return(V3IdlYAngle)
+    
+def calc_v2v3center_info(ImageModel,siaf_aperture,dy=0.02):
+        detector_to_v2v3=ImageModel.meta.wcs.get_transform('detector', 'v2v3') 
+
+        # get the x/y coordinates of the center
+        x0=siaf_aperture.XSciRef-1.0
+        y0=siaf_aperture.YSciRef-1.0
+
+        v2_0,v3_0 = detector_to_v2v3(x0,y0)
+        v2_1,v3_1 = detector_to_v2v3(x0,y0+dy)
+        v2_2,v3_2 = detector_to_v2v3(x0,y0-dy)
+
+        V3IdlYAngle = calc_V3IdlYAngle(v2_1,v3_1,v2_2,v3_2)
+        return(v2_0,v3_0,V3IdlYAngle)
     
 
 class fpa2fpa_alignmentclass(pdastroclass):

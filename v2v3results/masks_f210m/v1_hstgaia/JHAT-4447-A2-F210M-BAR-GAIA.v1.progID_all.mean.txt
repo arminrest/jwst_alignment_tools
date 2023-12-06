@@ -1,0 +1,2 @@
+  aperture filter progID V3IdlYAngle_mean V3IdlYAngle_mean_err V3IdlYAngle_stdev V3IdlYAngle_Ngood V3IdlYAngle_Nclip   V2ref_mean V2ref_mean_err V2ref_stdev V2ref_Ngood V2ref_Nclip    V3ref_mean V3ref_mean_err V3ref_stdev V3ref_Ngood V3ref_Nclip
+nrca2_full  f210m    all      -0.02529628           0.00052686        0.00268648                27                 0 117.96373124     0.00227312  0.01159068          27           0 -419.88234069     0.00065222  0.00326112          26           1
