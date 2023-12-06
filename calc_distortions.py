@@ -163,7 +163,7 @@ def get_files(filepatterns,directory=None,verbose=1):
 
 class calc_distortions_class(pdastrostatsclass):
     def __init__(self):
-        pdastroclass.__init__(self)
+        pdastrostatsclass.__init__(self)
         
         # define colnames of input tables
         self.colnames={}
@@ -201,6 +201,9 @@ class calc_distortions_class(pdastrostatsclass):
         self.ixs_use = None
         self.ixs_excluded = None
         self.ixs_cut_3sigma = None
+        
+        self.Sci2Idl_residualstats =  pdastrostatsclass()
+        self.Idl2Sci_residualstats =  pdastrostatsclass()
         
         # plot style for residual plots
         self.plot_style={}
@@ -524,16 +527,32 @@ class calc_distortions_class(pdastrostatsclass):
         
     def fit_Sci2Idl(self, ixs_use = None, Nsigma=3.0,percentile_cut_firstiteration=80,save_matches=True):
         if self.verbose: print('### fitting Sci2Idl...')
+        
         if ixs_use is None:
             ixs_use = self.getindices()
         self.ixs_use = ixs_use
         self.ixs_excluded =  AnotB(self.getindices(),ixs_use)
         if self.verbose: print(f'{len(ixs_use)} entries used for fit, {len(self.ixs_excluded)} excluded')  
 
+        # Idl2Sci_residualstats will contain the statistics of the residuals
+        self.Sci2Idl_residualstats =  pdastrostatsclass()
+        ix_statresults = self.Sci2Idl_residualstats.newrow({'aperture':self.apername,
+                                                         'filter':self.filtername,
+                                                         'pupil':self.pupilname})
+        # This defines how the statistics parameters are copied over to the results table
+        # Note that the column names in the output table use the prefix specified
+        statparam2columnmapping_dx = self.Sci2Idl_residualstats.intializecols4statparams(
+            setcol2None=False, params=['mean','mean_err','stdev'],
+            prefix='dx_', format4outvals = '{:.4f}')
+        statparam2columnmapping_dy = self.Sci2Idl_residualstats.intializecols4statparams(
+            setcol2None=False, params=['mean','mean_err','stdev'],
+            prefix='dy_', format4outvals = '{:.4f}')
+
+
         self.converged = False
         self.iteration = 0
 
-        # start fresh!
+        # save the intial indices for the fit!
         ixs4fit=copy.deepcopy(self.ixs_use)
 
         while not self.converged:
@@ -545,16 +564,20 @@ class calc_distortions_class(pdastrostatsclass):
             self.t['dx_idl_pix']  = (self.t['refcat_x_idl'] - self.t['x_idl_fit']) / coeff_Sci2IdlX[1]
             self.t['dy_idl_pix']  = (self.t['refcat_y_idl'] - self.t['y_idl_fit']) / coeff_Sci2IdlY[2]
         
+            #self.t.plot('x','dy_idl_pix',**self.plot_style['cut'])
+        
             self.calcaverage_sigmacutloop('dx_idl_pix',indices=ixs4fit,verbose=0,Nsigma=Nsigma,percentile_cut_firstiteration=percentile_cut_firstiteration)
             #print(self.statparams)
             Nclip = self.statparams['Nclip']
             ixs4fit = self.statparams['ix_good']
+            dx_statparams = copy.deepcopy(self.statparams)
         
             self.calcaverage_sigmacutloop('dy_idl_pix',indices=ixs4fit,verbose=0,Nsigma=Nsigma,percentile_cut_firstiteration=percentile_cut_firstiteration)
             #print(self.statparams)
             # add the Nclip from y to the Nclip from x
             Nclip += self.statparams['Nclip']
             ixs4fit = self.statparams['ix_good']
+            dy_statparams = copy.deepcopy(self.statparams)
         
             self.iteration+=1
             if Nclip<1:
@@ -565,66 +588,140 @@ class calc_distortions_class(pdastrostatsclass):
                 
             if self.iteration>20:
                 break
-            
+        
+        # Save the Sci to Idl coefficients in the coefficient table.
         self.coeffs.t['Sci2IdlX']=coeff_Sci2IdlX
         self.coeffs.t['Sci2IdlY']=coeff_Sci2IdlY
+        
+        # Set the indices for future use
         self.ixs4fit = ixs4fit
-            
         self.ixs_cut_3sigma = AnotB(self.ixs_use,self.ixs4fit)    
+        
+        # update the cutflag column in the table
         if self.verbose: print(f'3-sigma clip result: {len(self.ixs_cut_3sigma)} ({len(self.ixs_cut_3sigma)/len(self.ixs_use)*100.0:.1f}%) out of {len(self.ixs_use)} clipped')
         self.t['cutflag']=8   ### All 8 should be overwritten by the following commands! If not it's a bug!!
         self.t.loc[self.ixs4fit,'cutflag']=0
         self.t.loc[self.ixs_cut_3sigma,'cutflag']=1
         self.t.loc[self.ixs_excluded,'cutflag']=2
-        
+
+        # copy residual stats into the table
+        self.Sci2Idl_residualstats.statresults2table(dx_statparams,
+                                                     statparam2columnmapping_dx,
+                                                     destindex=ix_statresults)
+        self.Sci2Idl_residualstats.statresults2table(dy_statparams,
+                                                     statparam2columnmapping_dy,
+                                                     destindex=ix_statresults)
+        if self.verbose: 
+            self.Sci2Idl_residualstats.write()
+        # Save the residual stats!
+        outfilename = f'{self.outbasename}.Sci2Idl.residual_stats.txt'
+        if self.verbose: print(f'Saving SCI to IDL residual statistics to {outfilename}')
+        self.Sci2Idl_residualstats.write(outfilename)
+
         if self.verbose>2:
             self.coeffs.write()
         
+        # Save the matches
         if save_matches:
             outfilename = f'{self.outbasename}.matches.txt'
-            print(f'Saving {outfilename}')
+           if self.verbose:  print(f'Saving {outfilename}')
             self.write(outfilename)
         
         return(coeff_Sci2IdlX,coeff_Sci2IdlY)
+            
         
-    def fit_Idl2Sci(self, fit_coeffs0=False,gridbinsize=16):
+    def fit_Idl2Sci(self, fit_coeffs0=False,gridbinsize=4, save_Idl2Sci_residuals=False,ms=2,alpha=0.05):
         if self.verbose: print('### fitting Idl2Sci...')
+
+        tmp = pdastrostatsclass(columns=['aperture','filter','pupil'])
+        
+        # Idl2Sci_residualstats will contain the statistics of the residuals
+        self.Idl2Sci_residualstats =  pdastrostatsclass()
+        ix_statresults = self.Idl2Sci_residualstats.newrow({'aperture':self.apername,
+                                                         'filter':self.filtername,
+                                                         'pupil':self.pupilname})
+        # This defines how the statistics parameters are copied over to the results table
+        # Note that the column names in the output table use the prefix specified
+        statparam2columnmapping_dx = self.Idl2Sci_residualstats.intializecols4statparams(
+            setcol2None=False, params=['mean','mean_err','stdev','Ngood','Nclip'],
+            prefix='dx_', format4outvals = '{:.8f}')
+        self.Idl2Sci_residualstats.t[['dx_min','dx_max']]=np.nan
+        statparam2columnmapping_dy = self.Idl2Sci_residualstats.intializecols4statparams(
+            setcol2None=False, params=['mean','mean_err','stdev','Ngood','Nclip'],
+            prefix='dy_', format4outvals = '{:.8f}')
+        self.Idl2Sci_residualstats.t[['dy_min','dy_max']]=np.nan
+
         
         # set up the grid of xyprime
         nx, ny = (int(self.siaf_aperture.XSciSize/gridbinsize), int(self.siaf_aperture.XSciSize/gridbinsize))
         x = np.linspace(1, self.siaf_aperture.XSciSize, nx)
         y = np.linspace(1, self.siaf_aperture.YSciSize, ny)
-        xgprime, ygprime = np.meshgrid(x-self.siaf_aperture.XSciRef, y-self.siaf_aperture.YSciRef)
+        xgprime,ygprime = np.meshgrid(x-self.siaf_aperture.XSciRef, y-self.siaf_aperture.YSciRef)
+        tmp.t['xgprime'] = xgprime.flatten()
+        tmp.t['ygprime'] = ygprime.flatten()
         
         # Calculate xy_idl for grid using the fitted polynomials
-        xg_idl = pysiaf.utils.polynomial.poly(self.coeffs.t['Sci2IdlX'], xgprime, ygprime, order=self.poly_degree)
-        yg_idl = pysiaf.utils.polynomial.poly(self.coeffs.t['Sci2IdlY'], xgprime, ygprime, order=self.poly_degree)
+        tmp.t['xg_idl'] = pysiaf.utils.polynomial.poly(self.coeffs.t['Sci2IdlX'], tmp.t['xgprime'], tmp.t['ygprime'], order=self.poly_degree)
+        tmp.t['yg_idl'] = pysiaf.utils.polynomial.poly(self.coeffs.t['Sci2IdlY'], tmp.t['xgprime'], tmp.t['ygprime'], order=self.poly_degree)
     
         # fit Idl2Sci using the grid!
-        coeff_Idl2SciX = polyfit0(xgprime, xg_idl, yg_idl, order=self.poly_degree, fit_coeffs0=fit_coeffs0)
-        coeff_Idl2SciY = polyfit0(ygprime, xg_idl, yg_idl, order=self.poly_degree, fit_coeffs0=fit_coeffs0)
-    
-        # calculate residuals
-        xgprime_fit = pysiaf.utils.polynomial.poly(coeff_Idl2SciX, xg_idl, yg_idl, order=self.poly_degree)
-        ygprime_fit = pysiaf.utils.polynomial.poly(coeff_Idl2SciY, xg_idl, yg_idl, order=self.poly_degree)
-        dxgprime_pix  = (xgprime - xgprime_fit)
-        dygprime_pix  = (ygprime - ygprime_fit)
-
-        if self.showplots>1 or self.saveplots:    
-
-            sp = initplot(2,1,xfigsize4subplot=9,yfigsize4subplot=3)
-            sp[0].plot(ygprime,dygprime_pix,'bo',alpha=0.2)
-            sp[0].set_xlabel('yprime',fontsize=14)
-            sp[0].set_ylabel('dyprime_pix',fontsize=14)
-            sp[0].set_title(f'{self.apername} {self.filtername} {self.pupilname}: IDL to SCI residuals')
+        coeff_Idl2SciX = polyfit0(tmp.t['xgprime'], tmp.t['xg_idl'], tmp.t['yg_idl'], order=self.poly_degree, fit_coeffs0=fit_coeffs0)
+        coeff_Idl2SciY = polyfit0(tmp.t['ygprime'], tmp.t['xg_idl'], tmp.t['yg_idl'], order=self.poly_degree, fit_coeffs0=fit_coeffs0)
         
-            sp[1].plot(xgprime,dxgprime_pix,'bo',alpha=0.2)
-            sp[1].set_xlabel('xprime',fontsize=14)
-            sp[1].set_ylabel('dxprime_pix',fontsize=14)
+        # Save the calculated coefficients in the coefficient table!
+        self.coeffs.t['Idl2SciX']=coeff_Idl2SciX
+        self.coeffs.t['Idl2SciY']=coeff_Idl2SciY        
+        
+        # calculate residuals
+        tmp.t['xgprime_fit'] = pysiaf.utils.polynomial.poly(coeff_Idl2SciX, tmp.t['xg_idl'], tmp.t['yg_idl'], order=self.poly_degree)
+        tmp.t['ygprime_fit'] = pysiaf.utils.polynomial.poly(coeff_Idl2SciY, tmp.t['xg_idl'], tmp.t['yg_idl'], order=self.poly_degree)
+        tmp.t['dxgprime_pix']  = (tmp.t['xgprime'] - tmp.t['xgprime_fit'])
+        tmp.t['dygprime_pix']  = (tmp.t['ygprime'] - tmp.t['ygprime_fit'])
+        
+        # calculate statistis of the residuals and save it into Idl2Sci_residualstats
+        if self.verbose: print('# dxgprime_pix')
+        tmp.calcaverage_sigmacutloop('dxgprime_pix',Nsigma=3,verbose=0)
+        self.Idl2Sci_residualstats.statresults2table(tmp.statparams,
+                                                      statparam2columnmapping_dx,
+                                                      destindex=ix_statresults)
+        self.Idl2Sci_residualstats.t.loc[ix_statresults,['dx_min','dx_max']]=[tmp.t['dxgprime_pix'].min(),tmp.t['dxgprime_pix'].max()]
+
+        if self.verbose: print('# dygprime_pix')
+        tmp.calcaverage_sigmacutloop('dygprime_pix',Nsigma=3,verbose=0)
+        self.Idl2Sci_residualstats.statresults2table(tmp.statparams,
+                                                      statparam2columnmapping_dy,
+                                                      destindex=ix_statresults)
+        self.Idl2Sci_residualstats.t.loc[ix_statresults,['dy_min','dy_max']]=[tmp.t['dygprime_pix'].min(),tmp.t['dygprime_pix'].max()]
+
+        # print and save residual stats
+        self.Idl2Sci_residualstats.write()
+        outfilename = f'{self.outbasename}.Idl2Sci.residual_stats.txt'
+        if self.verbose: print(f'Saving IDL to SCI residual statistics to {outfilename}')
+        self.Idl2Sci_residualstats.write(outfilename)
+        if save_Idl2Sci_residuals:
+            outfilename = f'{self.outbasename}.Idl2Sci.residuals.txt'
+            if self.verbose: print(f'Saving IDL to SCI residual table to {outfilename}')
+            tmp.write(outfilename)
+            
+        # plots?
+        if self.showplots>1 or self.saveplots:  
+            
+            sp = initplot(2,1,xfigsize4subplot=9,yfigsize4subplot=3)
+            sp[0].plot(tmp.t['xgprime'],tmp.t['dxgprime_pix'],'bo',ms=ms, alpha=alpha)
+            sp[0].set_xlabel('xprime',fontsize=14)
+            sp[0].set_ylabel('dxprime_pix',fontsize=14)
+            sp[0].set_title(f'{self.apername} {self.filtername} {self.pupilname}: dx IDL to SCI residuals\n'
+                            f'mean={self.Idl2Sci_residualstats.t.loc[ix_statresults,"dx_mean"]:.7f}, stdev={self.Idl2Sci_residualstats.t.loc[ix_statresults,"dx_stdev"]:.7f}')
+        
+            sp[1].plot(tmp.t['ygprime'],tmp.t['dygprime_pix'],'bo',ms=ms, alpha=alpha)
+            sp[1].set_xlabel('yprime',fontsize=14)
+            sp[1].set_ylabel('dyprime_pix',fontsize=14)
+            sp[1].set_title(f'{self.apername} {self.filtername} {self.pupilname}: dy IDL to SCI residuals\n'
+                            f'mean={self.Idl2Sci_residualstats.t.loc[ix_statresults,"dy_mean"]:.7f}, stdev={self.Idl2Sci_residualstats.t.loc[ix_statresults,"dy_stdev"]:.7f}')
             plt.tight_layout()
             if self.saveplots:
                 outfilename = f'{self.outbasename}.Idl2Sci.residuals.png'
-                print(f'Saving IDL to SCI residual plot to {outfilename}')
+                if self.verbose: print(f'Saving IDL to SCI residual plot to {outfilename}')
                 plt.savefig(outfilename)
             if self.showplots:
                 plt.show()
@@ -650,6 +747,7 @@ if __name__ == '__main__':
     parser = distortions.define_options(parser=parser)
 
     args = parser.parse_args()
+    
     distortions.verbose=args.verbose
     distortions.showplots=args.showplots
     distortions.saveplots=args.saveplots
