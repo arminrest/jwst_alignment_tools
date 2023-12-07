@@ -709,6 +709,7 @@ class calc_distortions_class(pdastrostatsclass):
             self.write(outfilename)
             
         # plots?
+        # main residual plot
         if self.showplots or self.saveplots:
             add2title = f'({len(self.ixs_im)} images)\n'
             for param in ['dx_mean','dx_stdev','dy_mean','dy_stdev']:
@@ -723,9 +724,11 @@ class calc_distortions_class(pdastrostatsclass):
                                     showplot = self.showplots, saveplot = self.saveplots)
         
         
+        # xy plot
         if self.showplots>1 or self.saveplots:
             self.plot_xy(showplot = (self.showplots>1), saveplot = self.saveplots)
 
+        # residual plot for each image
         if self.showplots>2 or self.saveplots>1:
             imIDs = unique(self.t['imID'])
             imIDs.sort()
@@ -740,8 +743,6 @@ class calc_distortions_class(pdastrostatsclass):
                 self.mk_residual_figure(ixs4fit_imID, ixs_cut_3sigma_imID, ixs_excluded_imID, residual_limits = self.residual_plot_ylimits,
                                         add2title = add2title, add2filename = add2filename,
                                         showplot = (self.showplots>2), saveplot = (self.saveplots>1))
-            
-        sys.exit(0)
         
         
         return(coeff_Sci2IdlX,coeff_Sci2IdlY)
@@ -846,6 +847,14 @@ class calc_distortions_class(pdastrostatsclass):
             
         return(coeff_Idl2SciX,coeff_Idl2SciY)
 
+    def save_coeffs(self):
+        outfilename = f'{self.outbasename}.polycoeff.txt'
+        print(f'Saving coefficients to {outfilename}')
+        if self.verbose:
+            self.coeffs.write()   
+        self.coeffs.write(outfilename)   
+            
+
     
 if __name__ == '__main__':
     
@@ -875,9 +884,7 @@ if __name__ == '__main__':
     distortions.initialize(args.aperture,args.filter,args.pupil,progIDs=args.progIDs)
     distortions.set_outbasename(outrootdir=args.outrootdir,outsubdir=args.outsubdir)
     distortions.load_catalogs()
-    
-    distortions.imtable.write()
-    
+        
     # Calculate xyprime and refcat_xy_idl: this is what is used to fit the distortions!
     distortions.calc_refcat_xy_idl()
     distortions.calc_xyprime()
@@ -886,5 +893,6 @@ if __name__ == '__main__':
     distortions.fit_Sci2Idl()
     distortions.fit_Idl2Sci()
     
+    distortions.save_coeffs()
     print('Distortions finished!')
     
