@@ -191,6 +191,7 @@ class calc_distortions_class(pdastrostatsclass):
                                              'filter','pupil',
                                              'V2_REF','V3_REF','V3I_YANG',                                             
                                              'V2cen','V3cen','V3IdlYAnglecen'])
+        self.ixs_im = None
         
         self.coeffs = pdastroclass()
         
@@ -211,6 +212,8 @@ class calc_distortions_class(pdastrostatsclass):
         self.plot_style['cut']={'style':'o','color':'red', 'ms':5 ,'alpha':0.3}
         self.plot_style['excluded']={'style':'o','color':'gray', 'ms':3 ,'alpha':0.3}
 
+        self.residual_plot_ylimits = (-0.4,0.4)
+
         self.showplots = 0
         self.saveplots = 0
 
@@ -223,6 +226,82 @@ class calc_distortions_class(pdastrostatsclass):
         parser.add_argument('-s','--saveplots', default=0, action='count')
 
         return(parser)
+    
+    def plot_residuals(self, xcol, ycol, ixs_good, ixs_cut, ixs_excluded, spX, title=None, residual_limits=(-0.4,0.4)):
+        if len(ixs_excluded)>0: self.t.loc[ixs_excluded].plot(xcol,ycol,ax=spX,ylim=residual_limits,ylabel=ycol, **self.plot_style['excluded'])
+        if len(ixs_cut)>0:      self.t.loc[ixs_cut].plot(xcol,ycol,ax=spX,ylim=residual_limits,ylabel=ycol, **self.plot_style['cut'])
+        if len(ixs_good)>0:     self.t.loc[ixs_good].plot(xcol,ycol,ax=spX,ylim=residual_limits,ylabel=ycol,title=title, **self.plot_style['good'])
+        spX.axhline(0,  color='black',linestyle='-', linewidth=2.0)
+        spX.get_legend().remove()
+            
+    def mk_residual_figure(self, ixs_good, ixs_cut, ixs_excluded, sp=None, residual_limits=(-0.4,0.4), 
+                           xfigsize4subplot=9, yfigsize4subplot=3, 
+                           add2title=None,add2filename=None,
+                           showplot=True, saveplot=True, plotfilename=None):
+        if sp is None:
+            sp=initplot(4,1, xfigsize4subplot=xfigsize4subplot, yfigsize4subplot=yfigsize4subplot)
+    
+        title = f'{self.apername} {self.filtername} {self.pupilname}'
+        if add2title is not None: title+=f' {add2title}'
+        ### dy vs y
+        self.plot_residuals('y','dy_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[0], title=title, residual_limits=residual_limits)
+        self.plot_residuals('x','dx_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[1], residual_limits=residual_limits)
+        self.plot_residuals('x','dy_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[2], residual_limits=residual_limits)
+        self.plot_residuals('y','dx_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[3], residual_limits=residual_limits)
+        
+    
+        plt.tight_layout()
+
+        if saveplot:
+            if plotfilename is None:
+                outfilename = f'{self.outbasename}.ScI2Idl'
+                if add2filename is not None: 
+                    outfilename+=f'.{add2filename}'
+                outfilename += '.residuals.png'
+            else:
+                outfilename = plotfilename
+            if self.verbose: print(f'Saving residual plot to {outfilename}')
+            plt.savefig(outfilename)
+            
+        if showplot:
+            plt.show()
+        plt.close()
+
+
+        return(0)
+    
+    def plot_xy(self, showplot=True, saveplot=True, plotfilename=None):
+        
+        sp=initplot(1,2)
+        if len(self.ixs_excluded)>0: 
+            self.t.loc[self.ixs_excluded].plot('x','y',ax=sp[0],xlabel='x',ylabel='y', **self.plot_style['excluded'])
+            self.t.loc[self.ixs_excluded].plot('x','y',ax=sp[1],xlabel='x',ylabel='y', **self.plot_style['excluded'])
+            
+        title = f'{self.apername} {self.filtername} {self.pupilname}'
+        self.t.loc[self.ixs4fit].plot('x','y',ax=sp[0],title=title, **self.plot_style['good'])
+        if len(self.ixs_cut_3sigma)>0: self.t.loc[self.ixs_cut_3sigma].plot('x','y',ax=sp[1],title=title, **self.plot_style['cut'])
+        sp[0].set_ylabel('y',fontsize=14)
+        for i in range(len(sp)): 
+            if sp[i].get_legend() is not None:
+                sp[i].get_legend().remove()
+        
+        plt.tight_layout()
+        
+        if saveplot:
+            if plotfilename is None:
+                outfilename = f'{self.outbasename}.xy.png'
+            else:
+                outfilename = plotfilename
+            if self.verbose: print(f'Saving xy plot to {outfilename}')
+            plt.savefig(outfilename)
+            
+        if showplot:
+            plt.show()
+        plt.close()
+    
+        return(0)
+        
+ 
     
     def set_outdir(self,outrootdir=None,outsubdir=None):
         self.outdir = outrootdir
@@ -611,6 +690,8 @@ class calc_distortions_class(pdastrostatsclass):
         self.Sci2Idl_residualstats.statresults2table(dy_statparams,
                                                      statparam2columnmapping_dy,
                                                      destindex=ix_statresults)
+        self.Sci2Idl_residualstats.t.loc[ix_statresults,['Ngood','Nclip']]=[int(len(self.ixs4fit)),int(len(self.ixs_cut_3sigma))]
+        
         if self.verbose: 
             self.Sci2Idl_residualstats.write()
         # Save the residual stats!
@@ -624,12 +705,48 @@ class calc_distortions_class(pdastrostatsclass):
         # Save the matches
         if save_matches:
             outfilename = f'{self.outbasename}.matches.txt'
-           if self.verbose:  print(f'Saving {outfilename}')
+            if self.verbose:  print(f'Saving {outfilename}')
             self.write(outfilename)
+            
+        # plots?
+        if self.showplots or self.saveplots:
+            add2title = f'({len(self.ixs_im)} images)\n'
+            for param in ['dx_mean','dx_stdev','dy_mean','dy_stdev']:
+                val=self.Sci2Idl_residualstats.t.loc[ix_statresults,param]
+                add2title +=f' {param}={val:.5f}'
+            add2title += '\n'
+            for param in ['Ngood','Nclip']:
+                val=self.Sci2Idl_residualstats.t.loc[ix_statresults,param]
+                add2title +=f' {param}={int(val):d}'
+            self.mk_residual_figure(self.ixs4fit, self.ixs_cut_3sigma, self.ixs_excluded, residual_limits = self.residual_plot_ylimits,
+                                    add2title=add2title,
+                                    showplot = self.showplots, saveplot = self.saveplots)
+        
+        
+        if self.showplots>1 or self.saveplots:
+            self.plot_xy(showplot = (self.showplots>1), saveplot = self.saveplots)
+
+        if self.showplots>2 or self.saveplots>1:
+            imIDs = unique(self.t['imID'])
+            imIDs.sort()
+            for imID in imIDs:
+                ixs_imtable = self.imtable.ix_equal('imID',imID)
+                if len(ixs_imtable)!=1: raise RuntimeError(f'BUG!!!! {ixs_imtable}')
+                add2title = f'imID={imID} {os.path.basename(self.imtable.t.loc[ixs_imtable[0],"fullimage"])}'
+                add2filename = f'imID{imID}'
+                ixs4fit_imID        = self.ix_equal('imID',imID,indices=self.ixs4fit)
+                ixs_cut_3sigma_imID = self.ix_equal('imID',imID,indices=self.ixs_cut_3sigma)
+                ixs_excluded_imID   = self.ix_equal('imID',imID,indices=self.ixs_excluded)
+                self.mk_residual_figure(ixs4fit_imID, ixs_cut_3sigma_imID, ixs_excluded_imID, residual_limits = self.residual_plot_ylimits,
+                                        add2title = add2title, add2filename = add2filename,
+                                        showplot = (self.showplots>2), saveplot = (self.saveplots>1))
+            
+        sys.exit(0)
+        
         
         return(coeff_Sci2IdlX,coeff_Sci2IdlY)
-            
-        
+    
+   
     def fit_Idl2Sci(self, fit_coeffs0=False,gridbinsize=4, save_Idl2Sci_residuals=False,ms=2,alpha=0.05):
         if self.verbose: print('### fitting Idl2Sci...')
 
