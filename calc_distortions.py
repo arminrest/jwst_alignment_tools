@@ -9,11 +9,10 @@ Calculdate the distortions of detector/filter/pupil using a list of images and t
 
 """
 
-import jwst
 import os,re,sys,copy
 from jwst.datamodels import ImageModel
-from jwst import datamodels
-import astropy.units as u
+#from jwst import datamodels
+#import astropy.units as u
 import pysiaf
 from pdastro import makepath,rmfile,pdastroclass,pdastrostatsclass,AnotB,AorB,unique,makepath4file
 from astropy.io import fits
@@ -22,12 +21,12 @@ from astropy.modeling.models import Polynomial2D, Mapping, Shift
 from scipy import linalg
 import pandas as pd
 import glob
-import random
+#import random
 import matplotlib.pyplot as plt
 import argparse
 from calc_fpa2fpa_alignment import calc_v2v3center_info
 
-from astropy.coordinates import SkyCoord
+#from astropy.coordinates import SkyCoord
 
 def v2v3_idl_model(from_sys, to_sys, par, angle):
     """
@@ -174,23 +173,36 @@ class calc_distortions_class(pdastrostatsclass):
         self.colnames['ra']='gaia_ra'
         self.colnames['dec']='gaia_dec'
 
-        # output directory
-        self.outdir = None
-        self.outbasename = None
-        
-        self.instrument = None
-        self.apername = None
-        self.filtername = None
-        self.pupilname = None
         self.verbose = 0
-
-        self.siaf_instrument = None
-        self.siaf_aperture = None
+        self.showplots = 0
+        self.saveplots = 0
 
         self.imtable = pdastroclass(columns=['imID','progID','fullimage','instrument','apername',
                                              'filter','pupil',
                                              'V2_REF','V3_REF','V3I_YANG',                                             
                                              'V2cen','V3cen','V3IdlYAnglecen'])
+
+        self.siaf_instrument = None
+        self.siaf_aperture = None
+        
+        self. Nmin4distortions = 100 # minimum number of objects required for distortion
+
+        self.clear()
+
+    def clear(self):
+ 
+        self.t = pd.DataFrame(columns=self.t.columns)
+
+        # output directory
+        self.outdir = None
+        self.outbasename = None
+        self.coefffilename = None
+        
+        self.instrument = None
+        self.apername = None
+        self.filtername = None
+        self.pupilname = None
+
         self.ixs_im = None
         
         self.coeffs = pdastroclass()
@@ -222,8 +234,14 @@ class calc_distortions_class(pdastrostatsclass):
             parser = argparse.ArgumentParser(usage=usage,conflict_handler=conflict_handler)
 
         parser.add_argument('-v','--verbose', default=0, action='count')
+        parser.add_argument('--skip_savecoeff', default=False, action='store_true', help='Do not save the coefficients and other files like image list. The default output basename is {apername}_{filtername}_{pupilname}.polycoeff.txt')
         parser.add_argument('-p','--showplots', default=0, action='count')
         parser.add_argument('-s','--saveplots', default=0, action='count')
+        parser.add_argument('--input_dir', type=str, default=None, help='input_dir is the directory in which the input images are located located (default=%(default)s)')
+        parser.add_argument('--outrootdir', default='.', help='output root directory. The output directoy is the output root directory + the outsubdir if not None. (default=%(default)s)')
+        parser.add_argument('--outsubdir', default=None, help='outsubdir added to output root directory (default=%(default)s)')
+        parser.add_argument('--outbasename', default=None, help='if specified, override the default output basename {apername}_{filtername}_{pupilname}.')
+        parser.add_argument('--progIDs', type=int, default=None, nargs="+", help='list of progIDs (default=%(default)s)')
 
         return(parser)
     
@@ -320,6 +338,8 @@ class calc_distortions_class(pdastrostatsclass):
             self.outdir combines outrootdir and outsubdir (if exists)
             self.outbasename combines self.outdir and puts together the filename as {self.apername}_{self.filtername}_{self.pupilname}'
 
+        if self.savecoeff or self.saveplots: the directory is created if it doesn't exist yet
+        
         Parameters
         ----------
         outrootdir : string, optional
@@ -344,6 +364,10 @@ class calc_distortions_class(pdastrostatsclass):
             self.set_outdir(outrootdir=outrootdir,outsubdir=outsubdir)
             self.outbasename = f'{self.outdir}/{self.apername}_{self.filtername}_{self.pupilname}'
         if self.verbose: print(f'Output basename is set to {self.outbasename}')
+        
+        if self.savecoeff or self.saveplots:
+            makepath4file(self.outbasename)
+        
         return(self.outbasename)
 
 
@@ -380,7 +404,7 @@ class calc_distortions_class(pdastrostatsclass):
                 progID = 0
             self.imtable.t.loc[ix,'progID']=progID
         
-    def get_inputfiles_imtable(self,filepatterns,directory=None):
+    def get_inputfiles_imtable(self, filepatterns, directory=None, progIDs=None):
         """
         Find all images that fulfill the filepatterns, and obtain important info like aperture name, filter, pupil etc.
         
@@ -401,8 +425,20 @@ class calc_distortions_class(pdastrostatsclass):
         self.imtable.t['fullimage']=filenames
         self.imtable.t['imID']=range(len(filenames))
         self.get_inputfiles_info()
+        
+        # check for program IDs
+        if progIDs is not None:
+            if isinstance(progIDs,str):
+                progIDs = [progIDs]
+            ixs_im = []
+            for progID in progIDs:
+               ixs_im.extend(self.imtable.ix_equal('progID', int(progID)))
+
+            if self.verbose>1: print(f'{len(ixs_im)} out of {len(self.imtable.t)} images left with progIDs={progIDs}')
+            self.imtable.t=self.imtable.t.loc[ixs_im].copy()
+        
         if self.verbose>1:
-            distortions.imtable.write()
+            self.imtable.write()
 
         return(0)
     
@@ -426,8 +462,28 @@ class calc_distortions_class(pdastrostatsclass):
         self.coeffs.default_formatters['Idl2SciX']='{:.10e}'.format
         self.coeffs.default_formatters['Idl2SciY']='{:.10e}'.format
 
-    
-    def initialize(self,apername,filtername,pupilname, progIDs=None, raiseErrorFlag=True):
+    def set_siaf(self, instrument, apername, raiseErrorFlag=True):
+        if (self.siaf_instrument is None) or (self.siaf_instrument.instrument.lower() != instrument.lower()):
+            self.siaf_instrument = pysiaf.Siaf(instrument) 
+            if instrument != self.instrument:
+                if raiseErrorFlag:
+                    raise RuntimeError(f'Something is inconsistent with instrument!! {instrument}!={self.instrument}')
+                else:
+                    print(f'Warning: {instrument}!={self.instrument}, so setting instrument={instrument}')
+                    self.instrument = instrument
+        else:
+            if self.verbose: print('instrument {instrument}, keeping the same siaf!')
+
+        self.siaf_aperture = self.siaf_instrument.apertures[apername.upper()]
+        if apername != self.apername:
+            if raiseErrorFlag:
+                raise RuntimeError(f'Something is inconsistent with aperture!! {apername}!={self.apername}')
+            else:
+                print(f'Warning: {apername}!={self.apername}, so setting apername={apername}')
+                self.apername = apername
+            
+
+    def initialize(self,apername,filtername,pupilname, ixs_im=None, progIDs=None, raiseErrorFlag=True):
         """
         Get all the image in the self.imtable for the given aperture, filter, and pupil.
         Optionally constraint it to certain program IDs
@@ -466,7 +522,7 @@ class calc_distortions_class(pdastrostatsclass):
         
         
         # first, get all the entries that match apername,filtername,pupilname      
-        ixs_im = self.imtable.ix_equal('apername', apername)
+        ixs_im = self.imtable.ix_equal('apername', apername,indices=ixs_im)
         if self.verbose>1: print(f'{len(ixs_im)} images left with aperture={apername}')
 
         if filtername!='None' and (filtername is not None): 
@@ -509,8 +565,10 @@ class calc_distortions_class(pdastrostatsclass):
         self.instrument=self.imtable.t.loc[ixs_im[0],'instrument']
         if self.verbose: print(f'Instrument {self.instrument} with aperture {self.apername}: filter={self.filtername} pupil={self.pupilname}')
         
-        self.siaf_instrument = pysiaf.Siaf(self.instrument) 
-        self.siaf_aperture = self.siaf_instrument.apertures[self.apername.upper()]
+        self.set_siaf(self.instrument, self.apername, raiseErrorFlag=raiseErrorFlag)
+        
+        #self.siaf_instrument = pysiaf.Siaf(self.instrument) 
+        #self.siaf_aperture = self.siaf_instrument.apertures[self.apername.upper()]
         
         self.ixs_im = ixs_im
         
@@ -518,6 +576,9 @@ class calc_distortions_class(pdastrostatsclass):
         self.init_coefftable()
         
         return(ixs_im)
+    
+            
+    
     
     def load_catalogs(self, ixs_im=None, cat_suffix = '.good.phot.txt', catcolname=None):
         if ixs_im is None:
@@ -564,13 +625,15 @@ class calc_distortions_class(pdastrostatsclass):
         print(f'Loaded {len(frames)} tables')
         self.t = pd.concat(frames,ignore_index=True)
         print(f'{len(self.t)} rows total')
+        
+        return((len(self.t)<self. Nmin4distortions))
     
-    def calc_refcat_xy_idl(self, ixs_im=None, save_imtable=True):
+    def calc_refcat_xy_idl(self, ixs_im=None):
         if ixs_im is None:
             ixs_im = self.ixs_im
 
         parity = self.siaf_aperture.VIdlParity
-        v3_ideal_y_angle = self.siaf_aperture.V3IdlYAngle * np.pi / 180.
+        #v3_ideal_y_angle = self.siaf_aperture.V3IdlYAngle * np.pi / 180.
         
         #refcat_v2_col4fit = 'refcat_v2'
         #refcat_v3_col4fit = 'refcat_v3'
@@ -590,7 +653,7 @@ class calc_distortions_class(pdastrostatsclass):
             self.t.loc[ixs_imID,'refcat_y_idl'] = v2v32idly(self.t.loc[ixs_imID,'refcat_v2']-self.imtable.t.loc[ix_im,'V2cen'],
                                                             self.t.loc[ixs_imID,'refcat_v3']-self.imtable.t.loc[ix_im,'V3cen'])
         
-        if save_imtable:
+        if self.savecoeff:
             outfilename = f'{self.outbasename}.images.txt'
             print(f'Saving {outfilename}')
             self.imtable.write(outfilename,indices=ixs_im)
@@ -604,7 +667,7 @@ class calc_distortions_class(pdastrostatsclass):
 
         return(0)
         
-    def fit_Sci2Idl(self, ixs_use = None, Nsigma=3.0,percentile_cut_firstiteration=80,save_matches=True):
+    def fit_Sci2Idl(self, ixs_use = None, Nsigma=3.0,percentile_cut_firstiteration=80):
         if self.verbose: print('### fitting Sci2Idl...')
         
         if ixs_use is None:
@@ -694,16 +757,18 @@ class calc_distortions_class(pdastrostatsclass):
         
         if self.verbose: 
             self.Sci2Idl_residualstats.write()
-        # Save the residual stats!
-        outfilename = f'{self.outbasename}.Sci2Idl.residual_stats.txt'
-        if self.verbose: print(f'Saving SCI to IDL residual statistics to {outfilename}')
-        self.Sci2Idl_residualstats.write(outfilename)
+        # save residual statistics
+        if self.savecoeff:
+            # Save the residual stats!
+            outfilename = f'{self.outbasename}.Sci2Idl.residual_stats.txt'
+            if self.verbose: print(f'Saving SCI to IDL residual statistics to {outfilename}')
+            self.Sci2Idl_residualstats.write(outfilename)
 
         if self.verbose>2:
             self.coeffs.write()
         
         # Save the matches
-        if save_matches:
+        if self.savecoeff:
             outfilename = f'{self.outbasename}.matches.txt'
             if self.verbose:  print(f'Saving {outfilename}')
             self.write(outfilename)
@@ -743,12 +808,11 @@ class calc_distortions_class(pdastrostatsclass):
                 self.mk_residual_figure(ixs4fit_imID, ixs_cut_3sigma_imID, ixs_excluded_imID, residual_limits = self.residual_plot_ylimits,
                                         add2title = add2title, add2filename = add2filename,
                                         showplot = (self.showplots>2), saveplot = (self.saveplots>1))
-        
-        
+                
         return(coeff_Sci2IdlX,coeff_Sci2IdlY)
     
    
-    def fit_Idl2Sci(self, fit_coeffs0=False,gridbinsize=4, save_Idl2Sci_residuals=False,ms=2,alpha=0.05):
+    def fit_Idl2Sci(self, fit_coeffs0=False,gridbinsize=4, save_Idl2Sci_residuals=False, ms=2, alpha=0.05):
         if self.verbose: print('### fitting Idl2Sci...')
 
         tmp = pdastrostatsclass(columns=['aperture','filter','pupil'])
@@ -813,9 +877,12 @@ class calc_distortions_class(pdastrostatsclass):
 
         # print and save residual stats
         self.Idl2Sci_residualstats.write()
-        outfilename = f'{self.outbasename}.Idl2Sci.residual_stats.txt'
-        if self.verbose: print(f'Saving IDL to SCI residual statistics to {outfilename}')
-        self.Idl2Sci_residualstats.write(outfilename)
+        # save residual statistics
+        if self.savecoeff:
+            outfilename = f'{self.outbasename}.Idl2Sci.residual_stats.txt'
+            if self.verbose: print(f'Saving IDL to SCI residual statistics to {outfilename}')
+            self.Idl2Sci_residualstats.write(outfilename)
+        # for debugging, save residuals
         if save_Idl2Sci_residuals:
             outfilename = f'{self.outbasename}.Idl2Sci.residuals.txt'
             if self.verbose: print(f'Saving IDL to SCI residual table to {outfilename}')
@@ -847,13 +914,71 @@ class calc_distortions_class(pdastrostatsclass):
             
         return(coeff_Idl2SciX,coeff_Idl2SciY)
 
-    def save_coeffs(self):
-        outfilename = f'{self.outbasename}.polycoeff.txt'
-        print(f'Saving coefficients to {outfilename}')
+    def get_coefffilename(self, coefffilename=None):
+        if coefffilename is None:
+            coefffilename = f'{self.outbasename}.polycoeff.txt'
+        return(coefffilename)
+
+    def save_coeffs(self, coefffilename=None):
+        coefffilename = self.get_coefffilename(coefffilename)
+        print(f'Saving coefficients to {coefffilename}')
         if self.verbose:
             self.coeffs.write()   
-        self.coeffs.write(outfilename)   
+        self.coeffs.write(coefffilename) 
+        self.coefffilename = coefffilename
+        return(coefffilename)
             
+    def fit_distortions(self,apername,filtername,pupilname, 
+                        outrootdir=None, outsubdir=None,
+                        outbasename=None,
+                        ixs_im=None, progIDs=None,
+                        raiseErrorFlag=True):
+        # Prepare the fit
+        self.initialize(apername, filtername, pupilname,
+                        ixs_im=ixs_im, progIDs=progIDs,
+                        raiseErrorFlag=raiseErrorFlag)
+        self.set_outbasename(outrootdir=outrootdir,outsubdir=outsubdir,outbasename=outbasename)
+
+        # self.coefffilename will be set if self.savecoeff and after the new coefficients are saved
+        self.coefffilename = None
+        # remove old coefficients if the new coefficients are supposed to be saved
+        # this makes sure that old coefficients don't accidently hang around if there
+        # is a premature exit of this routine.
+        if self.savecoeff:
+            coefffilename = self.get_coefffilename()
+            rmfile(coefffilename)
+
+
+        if len(self.ixs_im)==0:
+            print('WARNING! No matching images for {apername} {filtername} {pupilname}! Skipping')
+            return(1,None)
+        
+        self.load_catalogs()
+        if len(self.t)<self. Nmin4distortions:
+            print('WARNING! Not enough objects ({len(self.t)}<{self. Nmin4distortions} in catalog for {apername} {filtername} {pupilname}! Skipping')
+            return(2,None)            
+            
+        # Calculate xyprime and refcat_xy_idl: this is what is used to fit the distortions!
+        self.calc_refcat_xy_idl()
+        self.calc_xyprime()
+        
+        # Now do the fitting!
+        self.fit_Sci2Idl()
+        self.fit_Idl2Sci()
+
+        # Save the coefficients
+        if self.savecoeff:
+            self.save_coeffs()
+        else:
+            self.coefffilename = None
+        print(f'Distortions for {self.apername} {self.filtername} {self.pupilname} finished!')
+
+        if (len(self.ixs4fit)<self. Nmin4distortions):
+            print('WARNING! Not enough objects ({len(self.ixs4fit)}<{self. Nmin4distortions} pass the cut for {apername} {filtername} {pupilname}! Skipping')
+            return(3,self.coefffilename)
+
+        return(0,self.coefffilename)
+        
 
     
 if __name__ == '__main__':
@@ -865,24 +990,32 @@ if __name__ == '__main__':
     parser.add_argument('filter', type=str, help='filter name, e.g. f200w. Can be "None" if the instrument does not have filters like FGS')
     parser.add_argument('pupil', type=str, help='pupil name, e.g. clear. Can be "None" if the instrument does not have pupils like FGS')
     parser.add_argument('input_filepatterns', nargs='+', type=str, help='list of input file(pattern)s. These get added to input_dir if input_dir is not None')
-    parser.add_argument('--input_dir', type=str, default=None, help='input_dir is the directory in which the input images are located located (default=%(default)s)')
-    parser.add_argument('--outrootdir', default='.', help='output root directory. The output directoy is the output root directory + the outsubdir if not None. (default=%(default)s)')
-    parser.add_argument('--outsubdir', default=None, help='outsubdir added to output root directory (default=%(default)s)')
-    parser.add_argument('--progIDs', type=int, default=None, nargs="+", help='list of progIDs (default=%(default)s)')
-
     parser = distortions.define_options(parser=parser)
 
     args = parser.parse_args()
     
     distortions.verbose=args.verbose
+    distortions.savecoeff=not (args.skip_savecoeff)
     distortions.showplots=args.showplots
     distortions.saveplots=args.saveplots
     
-    # Prepare the fitting
+    # get the input file list
     distortions.get_inputfiles_imtable(args.input_filepatterns,
-                                       directory=args.input_dir)
+                                       directory=args.input_dir,
+                                       progIDs=args.progIDs)
+    
+    (errorflag,) = distortions.fit_distortions(args.aperture, args.filter, args.pupil,
+                                               outrootdir=args.outrootdir, 
+                                               outsubdir=args.outsubdir,
+                                               outbasename=args.outbasename)
+    if errorflag:
+        print('ERROR! Something went wrong!')
+    sys.exit(0)
+
+    ### Old
     distortions.initialize(args.aperture,args.filter,args.pupil,progIDs=args.progIDs)
-    distortions.set_outbasename(outrootdir=args.outrootdir,outsubdir=args.outsubdir)
+    distortions.set_outbasename(outrootdir=args.outrootdir,
+                                outsubdir=args.outsubdir)
     distortions.load_catalogs()
         
     # Calculate xyprime and refcat_xy_idl: this is what is used to fit the distortions!
@@ -893,6 +1026,7 @@ if __name__ == '__main__':
     distortions.fit_Sci2Idl()
     distortions.fit_Idl2Sci()
     
+    # Save the coefficients
     distortions.save_coeffs()
     print('Distortions finished!')
     
