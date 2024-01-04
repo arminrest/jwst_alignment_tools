@@ -187,6 +187,14 @@ class calc_distortions_class(pdastrostatsclass):
         
         self. Nmin4distortions = 100 # minimum number of objects required for distortion
 
+        # plot style for residual plots
+        self.plot_style={}
+        self.plot_style['good']={'style':'o','color':'blue', 'ms':5 ,'alpha':0.5}
+        self.plot_style['cut']={'style':'o','color':'red', 'ms':5 ,'alpha':0.3}
+        self.plot_style['excluded']={'style':'o','color':'gray', 'ms':3 ,'alpha':0.3}
+
+        self.residual_plot_ylimits = (-0.4,0.4)
+
         self.clear()
 
     def clear(self):
@@ -218,23 +226,13 @@ class calc_distortions_class(pdastrostatsclass):
         self.Sci2Idl_residualstats =  pdastrostatsclass()
         self.Idl2Sci_residualstats =  pdastrostatsclass()
         
-        # plot style for residual plots
-        self.plot_style={}
-        self.plot_style['good']={'style':'o','color':'blue', 'ms':5 ,'alpha':0.5}
-        self.plot_style['cut']={'style':'o','color':'red', 'ms':5 ,'alpha':0.3}
-        self.plot_style['excluded']={'style':'o','color':'gray', 'ms':3 ,'alpha':0.3}
-
-        self.residual_plot_ylimits = (-0.4,0.4)
-
-        self.showplots = 0
-        self.saveplots = 0
-
     def define_options(self,parser=None,usage=None,conflict_handler='resolve'):
         if parser is None:
             parser = argparse.ArgumentParser(usage=usage,conflict_handler=conflict_handler)
 
         parser.add_argument('-v','--verbose', default=0, action='count')
         parser.add_argument('--skip_savecoeff', default=False, action='store_true', help='Do not save the coefficients and other files like image list. The default output basename is {apername}_{filtername}_{pupilname}.polycoeff.txt')
+        parser.add_argument('--skip_if_exists', default=False, action='store_true', help='If the coefficient file already exists, skip refitting. This options allows pick up where you left off if things got interrupted.')
         parser.add_argument('-p','--showplots', default=0, action='count')
         parser.add_argument('-s','--saveplots', default=0, action='count')
         parser.add_argument('--input_dir', type=str, default=None, help='input_dir is the directory in which the input images are located located (default=%(default)s)')
@@ -931,8 +929,13 @@ class calc_distortions_class(pdastrostatsclass):
     def fit_distortions(self,apername,filtername,pupilname, 
                         outrootdir=None, outsubdir=None,
                         outbasename=None,
+                        skip_if_exists=False,
                         ixs_im=None, progIDs=None,
                         raiseErrorFlag=True):
+        
+        # Make sure nothing from previous fits is left!
+        self.clear()
+        
         # Prepare the fit
         self.initialize(apername, filtername, pupilname,
                         ixs_im=ixs_im, progIDs=progIDs,
@@ -941,11 +944,16 @@ class calc_distortions_class(pdastrostatsclass):
 
         # self.coefffilename will be set if self.savecoeff and after the new coefficients are saved
         self.coefffilename = None
+
+        coefffilename = self.get_coefffilename()
+        if skip_if_exists:
+            if os.path.isfile(coefffilename):
+                print(f'Coeff file {coefffilename} already exists, skipping recreating it since skip_if_exists==True')
+                return(-1,coefffilename)
         # remove old coefficients if the new coefficients are supposed to be saved
         # this makes sure that old coefficients don't accidently hang around if there
         # is a premature exit of this routine.
         if self.savecoeff:
-            coefffilename = self.get_coefffilename()
             rmfile(coefffilename)
 
 
@@ -1007,26 +1015,8 @@ if __name__ == '__main__':
     (errorflag,) = distortions.fit_distortions(args.aperture, args.filter, args.pupil,
                                                outrootdir=args.outrootdir, 
                                                outsubdir=args.outsubdir,
-                                               outbasename=args.outbasename)
+                                               outbasename=args.outbasename,
+                                               skip_if_exists=args.skip_if_exists)
     if errorflag:
         print('ERROR! Something went wrong!')
-    sys.exit(0)
-
-    ### Old
-    distortions.initialize(args.aperture,args.filter,args.pupil,progIDs=args.progIDs)
-    distortions.set_outbasename(outrootdir=args.outrootdir,
-                                outsubdir=args.outsubdir)
-    distortions.load_catalogs()
-        
-    # Calculate xyprime and refcat_xy_idl: this is what is used to fit the distortions!
-    distortions.calc_refcat_xy_idl()
-    distortions.calc_xyprime()
-    
-    # Now do the fitting!
-    distortions.fit_Sci2Idl()
-    distortions.fit_Idl2Sci()
-    
-    # Save the coefficients
-    distortions.save_coeffs()
-    print('Distortions finished!')
     
