@@ -41,6 +41,7 @@ import argparse,glob,re,sys,os
 # pdastroclass is wrapper around pandas.
 from pdastro import pdastroclass,makepath4file,unique,AnotB,AorB,AandB,rmfile
 from pandas.core.dtypes.common import is_string_dtype
+from v2v3ref import v2v3refclass
 
 
 history_mainentry='distortion coefficients'
@@ -74,8 +75,10 @@ class coeffs2asdf(pdastroclass):
 
         # IMAGING metadata-----------------------------------------------
         self.metadata['imaging_pupil']={}
-        self.metadata['imaging_pupil']['NRC_SW']=['CLEAR', 'F162M', 'F164N', 'GDHS0', 'GDHS60', 'WLM8', 'WLP8', 'PINHOLES', 'MASKIPR', 'FLAT']
-        self.metadata['imaging_pupil']['NRC_LW']=['CLEAR', 'F323N', 'F405N', 'F466N', 'F470N', 'PINHOLES', 'MASKIPR', 'GRISMR', 'GRISMC', 'FLAT']
+        #self.metadata['imaging_pupil']['NRC_SW']=['CLEAR', 'F162M', 'F164N', 'GDHS0', 'GDHS60', 'WLM8', 'WLP8', 'PINHOLES', 'MASKIPR', 'FLAT']
+        #self.metadata['imaging_pupil']['NRC_LW']=['CLEAR', 'F323N', 'F405N', 'F466N', 'F470N', 'PINHOLES', 'MASKIPR', 'GRISMR', 'GRISMC', 'FLAT']
+        self.metadata['imaging_pupil']['NRC_SW']=['CLEAR', 'GDHS0', 'GDHS60', 'WLM8', 'WLP8', 'PINHOLES', 'MASKIPR', 'FLAT']
+        self.metadata['imaging_pupil']['NRC_LW']=['CLEAR', 'PINHOLES', 'MASKIPR', 'GRISMR', 'GRISMC', 'FLAT']
         # NIRCam mask
         self.metadata['imaging_pupil']['FULL_WEDGE_RND']=['MASKRND']
         self.metadata['imaging_pupil']['FULL_WEDGE_BAR']=['MASKBAR']
@@ -87,7 +90,7 @@ class coeffs2asdf(pdastroclass):
         self.metadata['imaging_filter']['NIRCAM']={}
         #self.metadata['imaging_filter']['NIRCAM']['F070W']=['F070W','F090W']
 
-        self.metadata['imaging_filter']['NIRCAM']['F210M']=['F182M','F187N','F210M','F212N']
+        #self.metadata['imaging_filter']['NIRCAM']['F210M']=['F182M','F187N','F210M','F212N']
         #self.metadata['imaging_filter']['NIRCAM']['F150W']=['F150W','F115W','F140M','F150W2']
         #self.metadata['imaging_filter']['NIRCAM']['F335M']=['F335M']
         #self.metadata['imaging_filter']['NIRCAM']['F356W']=['F322W2','F356W','F360M']
@@ -132,7 +135,7 @@ class coeffs2asdf(pdastroclass):
 
         parser.add_argument('coeff_filepatterns', nargs='+', type=str, default=None, help='list of coefficient file(pattern)s')
 
-        parser.add_argument('--siaf_xml_file',default=None, help='pass the siaf xml file. This can be used to pass new alignments etc (pattern)s')
+        parser.add_argument('--siaf_filename',default=None, help='pass the siaf xml file. This can be used to pass new alignments etc (pattern)s')
         parser.add_argument('-v','--verbose', default=0, action='count')
 
         return(parser)
@@ -178,15 +181,17 @@ class coeffs2asdf(pdastroclass):
             AperNameList = unique(self.t[aperture_col])
             if len(AperNameList)!=1:
                 raise RuntimeError(f'AperNameList={AperNameList}, only exactly one entry allowed!')
-            self.aperture = AperNameList[0]
+            self.aperture = AperNameList[0].upper()
         else:
-            self.aperture = aperture
+            self.aperture = aperture.upper()
 
         m = re.search('(^[a-zA-Z0-9]+)_(.*)',self.aperture)
         if m is None:
             raise RuntimeError(f'Could not get detector and aperture from {self.aperture}')
         else:
             self.detector, self.subarr = m.groups()
+        self.detector = self.detector.upper()
+        self.subarr = self.subarr.upper()
         
         if re.search('^NRC[AB]\d$',self.detector):
             self.instrument = "NIRCAM"
@@ -199,7 +204,7 @@ class coeffs2asdf(pdastroclass):
             else:
                 raise RuntimeError(f'BUG! detector {self.detector} not in NRC?1-5!')
             self.module = self.detector[-2]
-        elif self.detector == 'NIS':
+        elif self.detector.upper() == 'NIS':
             self.instrument = "NIRISS"
             self.camera = "NIS"
             if self.subarr == 'CEN': self.subarr = 'FULLP'
@@ -257,7 +262,7 @@ class coeffs2asdf(pdastroclass):
             if col in self.t.columns:
                 self.t[col]=self.t[col].astype('int')
 
-    def get_refpix(self,siaf_instance, apername,instrument):
+    def get_refpixold(self,siaf_instance, apername,instrument):
         """Return the reference location within the given aperture
     
         Parameters
@@ -266,6 +271,24 @@ class coeffs2asdf(pdastroclass):
         """
         
         siaf_aperture = siaf_instance[apername]
+        xref = siaf_aperture.XSciRef
+        yref = siaf_aperture.YSciRef
+        #return Shift(-xref) & Shift(-yref)
+        print('\n'
+              '#############################################################################\n'
+              '### WARNING: we assume that the lower left corner\'s pixel center is x,y=0,0!\n'
+              '### If this is not correct, you need to fix it!!!\n'
+              '#############################################################################\n')
+        return (Shift(-xref) & Shift(-yref))
+
+    def get_refpix(self,siaf_aperture):
+        """Return the reference location within the given aperture
+    
+        Parameters
+        ----------
+        siaf_aperture : aperture siaf instance
+        """
+        
         xref = siaf_aperture.XSciRef
         yref = siaf_aperture.YSciRef
         #return Shift(-xref) & Shift(-yref)
@@ -372,9 +395,10 @@ class coeffs2asdf(pdastroclass):
     def create_asdf_reference_for_distortion(self,
                                  aperture=None, aperture_col=None,
                                  filt=None,
+                                 pupil=None,
                                  degree=None,
                                  exponent_col='exponent_x',
-                                 siaf_xml_file=None,
+                                 siaf_filename=None,
                                  sci_filter=None,
                                  sci_pupil=None, sci_subarr=None, sci_exptype=None, 
                                  history=[],
@@ -405,6 +429,12 @@ class coeffs2asdf(pdastroclass):
         aperturecol: str
             if aperture_col is None, then the default self.aperture_col is used
             
+        filt: str
+            filter name.
+
+        pupil: str
+            pupil name. if 'clear', then sci_pupil is used
+            
         degree: int
             degree of polynomial distortions
             if degree is None, then the max value in exponent_col is used
@@ -412,8 +442,8 @@ class coeffs2asdf(pdastroclass):
         exponent_col: str
             column used to determine the degree of polynomial distortions
             
-        siaf_xml_file : str
-            Name of SIAF xml file to use in place of the default SIAF version from pysiaf.
+        siaf_filename : str
+            Name of SIAF file to use in place of the default SIAF version from pysiaf (can be txt or xml).
             If None, the default version in pysiaf will be used.
     
         sci_filter : list
@@ -427,6 +457,7 @@ class coeffs2asdf(pdastroclass):
         sci_pupil : list
             Pupil wheel values for which this distortion solution applies
             If None, self.metadata['imaging_pupil'][self.camera] will be used.
+            Only used if pupil='clear'
     
         sci_subarr : list
             List of subarray/aperture names to which this distortion solution applies
@@ -478,15 +509,6 @@ class coeffs2asdf(pdastroclass):
                 else:
                     if filt.upper() in self.metadata['imaging_filter']['NIRCAM']:
                         sci_filter = self.metadata['imaging_filter']['NIRCAM'][filt.upper()]
-                        
-                        ### HACK!! This is because we don't have module B F210M and F335M pupil=CLEAR
-                        #   images, and therefore for mod B we have to add the filter mapping
-                        #   from F210M to F200W, and from F335M to F356W
-                        if filt.upper() =='F200W' and self.module=='B':
-                            sci_filter.extend(self.metadata['imaging_filter']['NIRCAM']['F210M'])
-                        if filt.upper() =='F356W' and self.module=='B':
-                            sci_filter.extend(self.metadata['imaging_filter']['NIRCAM']['F335M'])
-                        
         else:
             raise RuntimeError(f'instrument {self.instrument} not supported yet')
          
@@ -497,13 +519,18 @@ class coeffs2asdf(pdastroclass):
             # NIRISS doesn't have imaging_pupil
             pass
         elif self.instrument=='NIRCAM':
-            if sci_pupil is None:
-                if self.subarr in self.metadata['imaging_pupil']:
-                    sci_pupil = self.metadata['imaging_pupil'][self.subarr]                
-                elif self.camera in self.metadata['imaging_pupil']:
-                    sci_pupil = self.metadata['imaging_pupil'][self.camera]
-                else:
-                    raise RuntimeError('not able to determine sci_pupil')
+            if pupil is not None:
+                if  pupil.lower() == 'clear':
+                    if sci_pupil is None:
+                        if self.subarr in self.metadata['imaging_pupil']:
+                            sci_pupil = self.metadata['imaging_pupil'][self.subarr]                
+                        elif self.camera in self.metadata['imaging_pupil']:
+                            sci_pupil = self.metadata['imaging_pupil'][self.camera]
+                        else:
+                            raise RuntimeError('not able to determine sci_pupil')
+        #        else:
+        #            sci_pupil = [pupil.upper()]
+                
         else:
             raise RuntimeError(f'instrument {self.instrument} not supported yet')
 
@@ -533,20 +560,33 @@ class coeffs2asdf(pdastroclass):
 #        full_aperture = detector + '_' + self.subarr
     
         # Get Siaf instance for detector/aperture
-        if siaf_xml_file is None:
-            print('Using default SIAF version in pysiaf.')
-            inst_siaf = pysiaf.Siaf(self.instrument.lower())
-            history.append('Using default SIAF version in pysiaf.')
+        inst_siaf = pysiaf.Siaf(self.instrument.lower())
+        aper_siaf = inst_siaf[self.aperture]
+        
+        # needed for ideal -> v2v3 or v2v3 -> ideal model
+        parity = aper_siaf.VIdlParity
+        
+        if siaf_filename is None:
+            V3IdlYAngle = aper_siaf.V3IdlYAngle
+            V2Ref = aper_siaf.V2Ref
+            V3Ref = aper_siaf.V3Ref
+            s = f'Getting (V2Ref, V3Ref, V3IdlYAngle) = ({V2Ref},{V3Ref},{V3IdlYAngle}) from default SIAF version in pysiaf.'
+            print(s)
+            history.append(s)
         else:
-            print(f'###### IMPORTANT!!!!\n###SIAF to be loaded from {siaf_xml_file} for instrument {self.instrument.lower()}...\n###### IMPORTANT!!!!')
-            inst_siaf = pysiaf.Siaf(filename=siaf_xml_file, instrument=self.instrument.lower())
-            history.append(f'Using siaf={os.path.basename(siaf_xml_file)}')
+            v2v3ref = v2v3refclass()
+            v2v3ref.load_v2v3ref(siaf_filename)
+            (V2Ref, V3Ref, V3IdlYAngle,ix) = v2v3ref.get_v2v3info(self.aperture) #,filtername=self.src_filter,pupilname=self.src_pupil)
+            s = f'Getting (V2Ref, V3Ref, V3IdlYAngle) = ({V2Ref},{V3Ref},{V3IdlYAngle}) from {os.path.basename(siaf_filename)} for aperture {self.aperture.lower()}.'
+            print(s)
+            history.append(s)
+            history.append(f'Using siaf={os.path.basename(siaf_filename)}')
     
-        siaf = inst_siaf[self.aperture]
+        #siaf = inst_siaf[self.aperture]
     
     
         # Find the distance between (0,0) and the reference location
-        xshift, yshift = self.get_refpix(inst_siaf, self.aperture,self.instrument)
+        xshift, yshift = self.get_refpix(aper_siaf)
         
         # convert the coefficients into dictionaries
         xcoeffs = self.get_coeff_dict('Sci2IdlX')
@@ -559,7 +599,7 @@ class coeffs2asdf(pdastroclass):
         # V3IdlYAngle and V2Ref, V3Ref should always be taken from the latest version
         # of SIAF, rather than the output of jwst_fpa. Separate FGS/NIRISS analyses must
         # be done in order to modify these values.
-        v3_ideal_y_angle = siaf.V3IdlYAngle * np.pi / 180.
+        v3_ideal_y_angle_radian = V3IdlYAngle * np.pi / 180.
     
         # *****************************************************
         # "Forward' transformations. science --> ideal --> V2V3
@@ -573,13 +613,13 @@ class coeffs2asdf(pdastroclass):
         sci2idly = Polynomial2D(degree, **ycoeffs)
     
         # Get info for ideal -> v2v3 or v2v3 -> ideal model
-        parity = siaf.VIdlParity
-        #v3_ideal_y_angle = siaf.V3IdlYAngle * np.pi / 180.
-        idl2v2v3x, idl2v2v3y = self.v2v3_model('ideal', 'v2v3', parity, v3_ideal_y_angle)
+
+        idl2v2v3x, idl2v2v3y = self.v2v3_model('ideal', 'v2v3', parity, v3_ideal_y_angle_radian)
     
         # Finally, we need to shift by the v2,v3 value of the reference
         # location in order to get to absolute v2,v3 coordinates
-        v2shift, v3shift = self.get_v2v3ref(siaf)
+        #v2shift, v3shift = self.get_v2v3ref(siaf)
+        v2shift, v3shift = Shift(V2Ref) & Shift(V3Ref)
     
         # *****************************************************
         # 'Reverse' transformations. V2V3 --> ideal --> science
@@ -594,8 +634,8 @@ class coeffs2asdf(pdastroclass):
     
         # Get info for ideal -> v2v3 or v2v3 -> ideal model
         #parity = siaf.VIdlParity
-        #v3_ideal_y_angle = siaf.V3IdlYAngle * np.pi / 180.
-        v2v32idlx, v2v32idly = self.v2v3_model('v2v3', 'ideal', parity, v3_ideal_y_angle)
+        #v3_ideal_y_angle_radian = siaf.V3IdlYAngle * np.pi / 180.
+        v2v32idlx, v2v32idly = self.v2v3_model('v2v3', 'ideal', parity, v3_ideal_y_angle_radian)
     
         ##"Forward' transformations. science --> ideal --> V2V3
         #sci2idlx, sci2idly, sciunit, idlunit = read_siaf_table.get_siaf_transform(coefffile,self.aperture,'science','ideal', 5)
@@ -702,7 +742,7 @@ class coeffs2asdf(pdastroclass):
             author = os.path.basename(os.path.expanduser('~'))
         d.meta.author = author
     
-        d.meta.litref = "https://github.com/arminrest/jwst_distortions_tools/distortion2asdf.py"
+        d.meta.litref = "https://github.com/arminrest/jwst_alignment_tools/blob/main/distortion2asdf.py"
 
         if descrip is None:
             d.meta.description = "This is a distortion correction reference file."
@@ -721,11 +761,16 @@ class coeffs2asdf(pdastroclass):
         else:
             d.meta.instrument.filter = filt.upper()
     
+        if pupil is None:
+            d.meta.instrument.pupil = 'N/A'
+        else:
+            d.meta.instrument.pupil = pupil.upper()
+    
         # Create initial HISTORY ENTRY
         sdict = {'name': 'distortion2asdf.py',
                  'author': author,
-                 'homepage': 'https://github.com/arminrest/jwst_distortions_tools/distortion2asdf.py',
-                 'version': '1.0'}
+                 'homepage': 'https://github.com/arminrest/jwst_alignment_tools',
+                 'version': '2.0'}
         
         #print('meta data: ',d.meta.instance)
          
@@ -752,8 +797,11 @@ class coeffs2asdf(pdastroclass):
         return(d)
     
     
-    def coefffile2adfs(self, filename, filt=None, outname=None, 
-                       siaf_xml_file=None,
+    def coefffile2adfs(self, filename, 
+                       filt=None,
+                       pupil=None,
+                       outname=None, 
+                       siaf_filename=None,
                        savemeta=True,
                        history=[],
                        author=None, 
@@ -764,7 +812,8 @@ class coeffs2asdf(pdastroclass):
         self.load_coeff_file(filename)
 
         distcoeff = self.create_asdf_reference_for_distortion(filt=filt,
-                                                              siaf_xml_file=siaf_xml_file,
+                                                              pupil=pupil,
+                                                              siaf_filename=siaf_filename,
                                                               history=history,
                                                               author=author, 
                                                               descrip=descrip, 
@@ -804,20 +853,20 @@ if __name__ == '__main__':
     filenames.sort()
     
     for filename in filenames:
-        if re.search('\.txt$',filename) is None:
+        if re.search('\.txt$',filename) is not None:
             outname = re.sub('\.txt$','.asdf',filename)
         else:
             outname = filename + '.asdf'
 
         # get the filter!
-        m = re.search('_(f\d\d\d[wmn])_',filename.lower())
-        if m is None:
-            m = re.search('_(f\d\d\dw2)_',filename.lower())
+        m = re.search('_(f\d+[wmn2]+)_(\w+)\.polycoeff\.txt',filename.lower())
+        #if m is None:
+        #    m = re.search('_(f\d\d\dw2)_',filename.lower())
         if m is not None:
-            filt = m.groups()[0]
+            (filt,pupil) = m.groups()
         else:
-            filt=None
+            filt=pupil=None
             raise RuntimeError(f'####### !!!!! WARNING!!! Could not determine the filter from filename {filename.lower()}!')
            
 
-        coeffs.coefffile2adfs(filename,outname=outname,filt=filt,siaf_xml_file=args.siaf_xml_file)
+        coeffs.coefffile2adfs(filename,outname=outname,filt=filt,pupil=pupil,siaf_filename=args.siaf_filename)
