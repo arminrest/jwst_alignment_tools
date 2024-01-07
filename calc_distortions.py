@@ -172,6 +172,8 @@ class calc_distortions_class(pdastrostatsclass):
         self.colnames['dmag']='dmag'
         self.colnames['ra']='gaia_ra'
         self.colnames['dec']='gaia_dec'
+        
+        self.phot_suffix = '.good.phot.txt'
 
         self.verbose = 0
         self.showplots = 0
@@ -240,6 +242,7 @@ class calc_distortions_class(pdastrostatsclass):
         parser.add_argument('--outsubdir', default=None, help='outsubdir added to output root directory (default=%(default)s)')
         parser.add_argument('--outbasename', default=None, help='if specified, override the default output basename {apername}_{filtername}_{pupilname}.')
         parser.add_argument('--progIDs', type=int, default=None, nargs="+", help='list of progIDs (default=%(default)s)')
+        parser.add_argument('--xypsf', default=False, action='store_true', help='use the x,y from psf photometry. This assumes that the *jhat.good.phot_psf.txt file exists!')
 
         return(parser)
     
@@ -260,10 +263,10 @@ class calc_distortions_class(pdastrostatsclass):
         title = f'{self.apername} {self.filtername} {self.pupilname}'
         if add2title is not None: title+=f' {add2title}'
         ### dy vs y
-        self.plot_residuals('y','dy_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[0], title=title, residual_limits=residual_limits)
-        self.plot_residuals('x','dx_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[1], residual_limits=residual_limits)
-        self.plot_residuals('x','dy_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[2], residual_limits=residual_limits)
-        self.plot_residuals('y','dx_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[3], residual_limits=residual_limits)
+        self.plot_residuals(self.colnames['y'],'dy_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[0], title=title, residual_limits=residual_limits)
+        self.plot_residuals(self.colnames['x'],'dx_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[1], residual_limits=residual_limits)
+        self.plot_residuals(self.colnames['x'],'dy_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[2], residual_limits=residual_limits)
+        self.plot_residuals(self.colnames['y'],'dx_idl_pix', ixs_good, ixs_cut, ixs_excluded, sp[3], residual_limits=residual_limits)
         
     
         plt.tight_layout()
@@ -290,13 +293,13 @@ class calc_distortions_class(pdastrostatsclass):
         
         sp=initplot(1,2)
         if len(self.ixs_excluded)>0: 
-            self.t.loc[self.ixs_excluded].plot('x','y',ax=sp[0],xlabel='x',ylabel='y', **self.plot_style['excluded'])
-            self.t.loc[self.ixs_excluded].plot('x','y',ax=sp[1],xlabel='x',ylabel='y', **self.plot_style['excluded'])
+            self.t.loc[self.ixs_excluded].plot(self.colnames['x'],self.colnames['y'],ax=sp[0],xlabel=self.colnames['x'],ylabel=self.colnames['y'], **self.plot_style['excluded'])
+            self.t.loc[self.ixs_excluded].plot(self.colnames['x'],self.colnames['y'],ax=sp[1],xlabel=self.colnames['x'],ylabel=self.colnames['y'], **self.plot_style['excluded'])
             
         title = f'{self.apername} {self.filtername} {self.pupilname}'
-        self.t.loc[self.ixs4fit].plot('x','y',ax=sp[0],title=title, **self.plot_style['good'])
-        if len(self.ixs_cut_3sigma)>0: self.t.loc[self.ixs_cut_3sigma].plot('x','y',ax=sp[1],title=title, **self.plot_style['cut'])
-        sp[0].set_ylabel('y',fontsize=14)
+        self.t.loc[self.ixs4fit].plot(self.colnames['x'],self.colnames['y'],ax=sp[0],title=title, **self.plot_style['good'])
+        if len(self.ixs_cut_3sigma)>0: self.t.loc[self.ixs_cut_3sigma].plot(self.colnames['x'],self.colnames['y'],ax=sp[1],title=title, **self.plot_style['cut'])
+        sp[0].set_ylabel(self.colnames['y'],fontsize=14)
         for i in range(len(sp)): 
             if sp[i].get_legend() is not None:
                 sp[i].get_legend().remove()
@@ -660,8 +663,8 @@ class calc_distortions_class(pdastrostatsclass):
         
     def calc_xyprime(self):
 
-        self.t['xprime'] =  self.t['x'] + 1 - self.siaf_aperture.XSciRef 
-        self.t['yprime'] =  self.t['y'] + 1 - self.siaf_aperture.YSciRef 
+        self.t['xprime'] =  self.t[self.colnames['x']] + 1 - self.siaf_aperture.XSciRef 
+        self.t['yprime'] =  self.t[self.colnames['y']] + 1 - self.siaf_aperture.YSciRef 
 
         return(0)
         
@@ -704,7 +707,7 @@ class calc_distortions_class(pdastrostatsclass):
             self.t['dx_idl_pix']  = (self.t['refcat_x_idl'] - self.t['x_idl_fit']) / coeff_Sci2IdlX[1]
             self.t['dy_idl_pix']  = (self.t['refcat_y_idl'] - self.t['y_idl_fit']) / coeff_Sci2IdlY[2]
         
-            #self.t.plot('x','dy_idl_pix',**self.plot_style['cut'])
+            #self.t.plot(self.colnames['x'],'dy_idl_pix',**self.plot_style['cut'])
         
             self.calcaverage_sigmacutloop('dx_idl_pix',indices=ixs4fit,verbose=0,Nsigma=Nsigma,percentile_cut_firstiteration=percentile_cut_firstiteration)
             #print(self.statparams)
@@ -961,7 +964,7 @@ class calc_distortions_class(pdastrostatsclass):
             print('WARNING! No matching images for {apername} {filtername} {pupilname}! Skipping')
             return(1,None)
         
-        self.load_catalogs()
+        self.load_catalogs(cat_suffix = self.phot_suffix)
         if len(self.t)<self. Nmin4distortions:
             print('WARNING! Not enough objects ({len(self.t)}<{self. Nmin4distortions} in catalog for {apername} {filtername} {pupilname}! Skipping')
             return(2,None)            
@@ -1006,6 +1009,11 @@ if __name__ == '__main__':
     distortions.savecoeff=not (args.skip_savecoeff)
     distortions.showplots=args.showplots
     distortions.saveplots=args.saveplots
+    
+    if args.xypsf:
+        distortions.colnames['x']='x_psf'
+        distortions.colnames['y']='y_psf'
+        distortions.phot_suffix = '.good.phot_psf.txt'
     
     # get the input file list
     distortions.get_inputfiles_imtable(args.input_filepatterns,

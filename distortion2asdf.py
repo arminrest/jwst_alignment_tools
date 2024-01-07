@@ -401,7 +401,7 @@ class coeffs2asdf(pdastroclass):
                                  siaf_filename=None,
                                  sci_filter=None,
                                  sci_pupil=None, sci_subarr=None, sci_exptype=None, 
-                                 history=[],
+                                 history2add=[],
                                  author=None, descrip=None, pedigree=None,
                                  useafter=None):
         """
@@ -467,7 +467,7 @@ class coeffs2asdf(pdastroclass):
             List of exposure types to which this distortion solution applies
             If None, self.metadata['exptype'][self.camera] will be used.
     
-        history : list
+        history2add : list
             list of text to be added as a HISTORY entry in the output reference file
     
         author : str
@@ -486,6 +486,9 @@ class coeffs2asdf(pdastroclass):
         --------
     
         """
+
+        # this list will contain text to be added to the history, e.g., V2/V3ref used
+        history=[]
         
         if degree is None:
             degree = int(self.t[exponent_col].max())
@@ -803,7 +806,7 @@ class coeffs2asdf(pdastroclass):
                        outname=None, 
                        siaf_filename=None,
                        savemeta=True,
-                       history=[],
+                       history2add=[],
                        author=None, 
                        descrip=None, 
                        pedigree=None,
@@ -814,7 +817,7 @@ class coeffs2asdf(pdastroclass):
         distcoeff = self.create_asdf_reference_for_distortion(filt=filt,
                                                               pupil=pupil,
                                                               siaf_filename=siaf_filename,
-                                                              history=history,
+                                                              history2add=history2add,
                                                               author=author, 
                                                               descrip=descrip, 
                                                               pedigree=pedigree,
@@ -830,8 +833,8 @@ class coeffs2asdf(pdastroclass):
                 print('meta data: \n',distcoeff.meta.instance)
                 metalist = '\n'.join([f'{k}:{distcoeff.meta.instance[k]}' for k in distcoeff.meta.instance])
                 histlist = '\n'.join([f'HISTORY:{k}' for k in distcoeff.history])
-                print(metalist)
-                print(histlist)
+                #print(metalist)
+                #print(histlist)
                 metalist+='\n'+histlist
                 open(metaoutname,'w').writelines(metalist)
                 print(f'Distortion coefficients meta data saved to {metaoutname}')

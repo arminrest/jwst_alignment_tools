@@ -206,6 +206,11 @@ if __name__ == '__main__':
     distortions.savecoeff=not (args.skip_savecoeff)
     distortions.showplots=args.showplots
     distortions.saveplots=args.saveplots
+
+    if args.xypsf:
+        distortions.colnames['x']='x_psf'
+        distortions.colnames['y']='y_psf'
+        distortions.phot_suffix = '.good.phot_psf.txt'
     
     # get all the files
     distortions.get_inputfiles_imtable(args.input_filepatterns,
