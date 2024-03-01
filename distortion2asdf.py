@@ -50,6 +50,8 @@ class coeffs2asdf(pdastroclass):
     def __init__(self):
         pdastroclass.__init__(self)
         
+        self.imtable = None 
+        
         self.verbose=0
         
         self.aperture_col = 'AperName'
@@ -261,6 +263,15 @@ class coeffs2asdf(pdastroclass):
         for col in ['siaf_index','exponent_x','exponent_y']:       
             if col in self.t.columns:
                 self.t[col]=self.t[col].astype('int')
+                
+        if re.search('polycoeff\.txt$',self.filename):
+            imtablefilename = re.sub('polycoeff\.txt$','images.txt',self.filename)
+            if not os.path.isfile(imtablefilename):
+                raise RuntimeError(f'The suffix of the coefficient file is polycoeff.txt, and therefore we expect an image list file of the name {imtablefilename} which does not exist. This file is only used for meta data, so not essential, but still exiting...')
+            self.imtable=pdastroclass()
+            self.imtable.load(imtablefilename,verbose=2)
+        else:
+            self.imtable = None
 
     def get_refpixold(self,siaf_instance, apername,instrument):
         """Return the reference location within the given aperture
@@ -733,6 +744,17 @@ class coeffs2asdf(pdastroclass):
 
         if pedigree is None:
             d.meta.pedigree = 'INFLIGHT'
+            if self.imtable is not None:
+                if 'date-obs' in self.imtable.t.columns:
+                    dates = sorted(unique(self.imtable.t['date-obs']))
+                    if len(dates)==1:
+                        d.meta.pedigree += f' {dates[0]} {dates[0]}'
+                    elif len(dates)>1:
+                        d.meta.pedigree += f' {dates[0]} {dates[-1]}'
+                    else:
+                        raise RuntimeError(f'Bug? The image table {self.imtable.filename} exists, but no entries in column "date-obs"?')
+                else:
+                    print('####   !!!!! WARNING !!!! Did not find column "date-obs" in the image table!')
         else:
             if re.search('^DUMMY|^GROUND|^INFLIGHT',pedigree.upper()) is None:
 #            if pedigree.upper() not in ['DUMMY', 'GROUND', 'INFLIGHT']:
@@ -749,6 +771,17 @@ class coeffs2asdf(pdastroclass):
 
         if descrip is None:
             d.meta.description = "This is a distortion correction reference file."
+            if self.imtable is not None:
+                if 'progID' in self.imtable.t.columns:
+                    progIDs = sorted(unique(self.imtable.t['progID'].astype(str)))
+                    d.meta.description += ' The following PIDs were use for the creation of this reference file: '+' '.join(progIDs)
+                    #d.meta.description.append(' The following PIDs were use for the creation of this reference file: '+' '.join(progIDs))
+                else:
+                    print('####   !!!!! WARNING !!!! Did not find column "progID" in the image table!')
+                if 'fullimage' in self.imtable.t.columns:
+                    pass
+                    #d.meta.description += 'Files used to create this reference file:'
+            
         else:
             d.meta.description = descrip
             
@@ -784,6 +817,15 @@ class coeffs2asdf(pdastroclass):
                 print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',entry)
                 #histentry = util.create_history_entry(history_2)
                 d.history.append(util.create_history_entry(entry))
+        if self.imtable is not None:
+            if 'fullimage' in self.imtable.t.columns:
+                d.history.append(util.create_history_entry('Files used to create this reference file:'))
+                for ix in self.imtable.getindices():
+                    filename = os.path.basename(self.imtable.t.loc[ix,'fullimage'])
+                    d.history.append(util.create_history_entry(f'{filename}'))
+            else:
+                print('####   !!!!! WARNING !!!! Did not find column "fullimage" in the image table!')
+
 
         print(d.history)
         #sys.exit(0)

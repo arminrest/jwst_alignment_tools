@@ -601,6 +601,15 @@ class pdastroclass:
 
         return(ix_sorted)
 
+    def replace_regex(self,col,destcol,regex,substitution,indices=None):
+        # get the indices based on input.
+        indices=self.getindices(indices)  
+        
+        self.t.loc[indices,destcol]  = self.t.loc[indices,col].str.replace(regex,substitution,regex=True)
+        #self.imtable.t.loc[indices,destcol] = replace_results[0].values
+    
+        return(indices)    
+
     def newrow(self,dicti=None):
         #self.t = self.t.append(dicti,ignore_index=True)
         self.t = pd.concat([self.t,pd.DataFrame([dicti])],axis=0, ignore_index=True)
@@ -641,9 +650,18 @@ class pdastroclass:
         for index in indices:
             #header = fits.getheader(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname)
             # It was impossible to use 'verify' with getheader... 
-            hdu = fits.open(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname,output_verify="silentfix")
+            #hdu = fits.open(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname,output_verify="silentfix")
+            hdu = fits.open(self.t.loc[index,fitsfilecolname],output_verify="silentfix")
             if verify is not None: hdu.verify(verify)
-            header = hdu[0].header
+            
+            # get the appropriate extension
+            if ext is not None:
+                header = hdu[ext].header
+            elif extname is not None:
+                header = hdu[extname].header
+            else:
+                header = hdu[0].header
+                
             if headercol!=None:
                 self.t[headercol]=header
                 

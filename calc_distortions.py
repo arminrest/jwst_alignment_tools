@@ -179,10 +179,8 @@ class calc_distortions_class(pdastrostatsclass):
         self.showplots = 0
         self.saveplots = 0
 
-        self.imtable = pdastroclass(columns=['imID','progID','fullimage','instrument','apername',
-                                             'filter','pupil',
-                                             'V2_REF','V3_REF','V3I_YANG',                                             
-                                             'V2cen','V3cen','V3IdlYAnglecen'])
+        self.imtable = pdastroclass(columns=['imID','progID','fullimage'])
+        #,'DETECTOR','INSTRUME','APERNAME','FILTER','PUPIL','V2_REF','V3_REF','V3I_YANG', 'V2cen','V3cen','V3IdlYAnglecen'])
 
         self.siaf_instrument = None
         self.siaf_aperture = None
@@ -243,6 +241,7 @@ class calc_distortions_class(pdastrostatsclass):
         parser.add_argument('--outbasename', default=None, help='if specified, override the default output basename {apername}_{filtername}_{pupilname}.')
         parser.add_argument('--progIDs', type=int, default=None, nargs="+", help='list of progIDs (default=%(default)s)')
         parser.add_argument('--xypsf', default=False, action='store_true', help='use the x,y from psf photometry. This assumes that the *jhat.good.phot_psf.txt file exists!')
+        parser.add_argument('--xy1pass', default=False, action='store_true', help='use the x,y from Pass1 photometry. This assumes that the *jhat_sci1_xyrd.ecsv file exists!')
 
         return(parser)
     
@@ -381,7 +380,23 @@ class calc_distortions_class(pdastrostatsclass):
         None.
 
         """
-        for ix in self.imtable.getindices():     
+        ixs = self.imtable.getindices()
+
+        self.imtable.fitsheader2table('fullimage',requiredfitskeys=['INSTRUME','DETECTOR','APERNAME','FILTER','PUPIL','DATE-OBS','TIME-OBS'])
+        self.imtable.fitsheader2table('fullimage',requiredfitskeys=['V2_REF','V3_REF','V3I_YANG'],ext=1)
+
+        # Convert fits keyword columns to lower case, including column names
+        renamedict={}
+        for col in ['INSTRUME','DETECTOR','APERNAME','FILTER','PUPIL','DATE-OBS','TIME-OBS']:
+            self.imtable.t[col] = self.imtable.t[col].str.lower()
+            renamedict[col]=col.lower()
+        self.imtable.t = self.imtable.t.rename(columns=renamedict)
+
+        #self.imtable.write()
+        #sys.exit(0)
+        
+        for ix in ixs:   
+            """
             hdr0 = fits.getheader(self.imtable.t.loc[ix,'fullimage'])
             hdr1 = fits.getheader(self.imtable.t.loc[ix,'fullimage'],ext=1)
             self.imtable.t.loc[ix,['instrument','apername']]=[hdr0["INSTRUME"].lower(),hdr0["APERNAME"].lower()]
@@ -397,6 +412,7 @@ class calc_distortions_class(pdastrostatsclass):
                 self.imtable.t.loc[ix,['V2_REF','V3_REF','V3I_YANG']]=[float(hdr1["V2_REF"]),float(hdr1["V3_REF"]),float(hdr1["V3I_YANG"])]
             else:
                 self.imtable.t.loc[ix,['V2_REF','V3_REF','V3I_YANG']]=[np.nan,np.nan,np.nan]
+            """
                 
             m = re.search('^jw(\d\d\d\d\d)',os.path.basename(self.imtable.t.loc[ix,'fullimage']))
             if m is not None:
@@ -563,7 +579,7 @@ class calc_distortions_class(pdastrostatsclass):
         self.apername=self.imtable.t.loc[ixs_im[0],'apername']
         self.filtername=self.imtable.t.loc[ixs_im[0],'filter']
         self.pupilname=self.imtable.t.loc[ixs_im[0],'pupil']
-        self.instrument=self.imtable.t.loc[ixs_im[0],'instrument']
+        self.instrument=self.imtable.t.loc[ixs_im[0],'instrume']
         if self.verbose: print(f'Instrument {self.instrument} with aperture {self.apername}: filter={self.filtername} pupil={self.pupilname}')
         
         self.set_siaf(self.instrument, self.apername, raiseErrorFlag=raiseErrorFlag)
@@ -581,23 +597,34 @@ class calc_distortions_class(pdastrostatsclass):
             
     
     
-    def load_catalogs(self, ixs_im=None, cat_suffix = '.good.phot.txt', catcolname=None):
+    def load_catalogs(self, ixs_im=None, cat_suffix = '.good.phot.txt', catcolname=None,skip_bad_catalogs=True):
         if ixs_im is None:
             ixs_im = self.ixs_im
             
         frames = {}
+        ixs_im_used = []
         for ix_im in ixs_im:
             imID = self.imtable.t.loc[ix_im,'imID']
             if catcolname is not None:
                 catfilename = self.imtable.t.loc[ix_im,catcolname]
             else:
                 catfilename = re.sub('\.fits$',cat_suffix,self.imtable.t.loc[ix_im,'fullimage'])
-            print(catfilename)
+
+            if not os.path.isfile(catfilename):
+                if skip_bad_catalogs:
+                    print(f'catalog {catfilename} does not exist, skipping since skip_bad_catalogs=True')
+                    continue
+                else:
+                    raise RuntimeError(f'catalog {catfilename} does not exist!')
+            ixs_im_used.append(ix_im)
+
+            print(f'Starting to load {catfilename}...')
 
             # Load the table into hash
-            frames[imID] = pd.read_csv(catfilename,sep='\s+')
+            frames[imID] = pd.read_csv(catfilename,sep='\s+',comment='#')
             if len(frames[imID])<1:
                 raise RuntimeError(f'file {catfilename} has no data!')
+            print(f'... {catfilename} loaded')
             
             # only keep relevant columns
             frames[imID] = frames[imID][list(self.colnames.values())].copy()
@@ -620,12 +647,20 @@ class calc_distortions_class(pdastrostatsclass):
             v2_0,v3_0,V3IdlYAngle = calc_v2v3center_info(image_model,self.siaf_aperture)
             self.imtable.t.loc[ix_im,['V2cen','V3cen','V3IdlYAnglecen']]= v2_0,v3_0,V3IdlYAngle
             
-            print(f'Loaded {len(frames[ix_im])} rows for imID={ix_im}')
+            print(f'Loaded and processed {len(frames[ix_im])} rows for imID={ix_im}')
     
         # Merge the tables into one mastertable
         print(f'Loaded {len(frames)} tables')
+        if len(frames)==0:
+            print('Nothing was loaded???? exiting')
+            sys.exit(0)
         self.t = pd.concat(frames,ignore_index=True)
         print(f'{len(self.t)} rows total')
+        
+        print(f'NNNNNNNNNNN {self.ixs_im} {ixs_im_used}')
+        if len(self.ixs_im) != len(ixs_im_used):
+            print(f'Keeping {len(ixs_im_used)} of {len(self.ixs_im)} images!')
+        self.ixs_im = self.imtable.getindices(ixs_im_used)
         
         return((len(self.t)<self. Nmin4distortions))
     
@@ -1014,6 +1049,10 @@ if __name__ == '__main__':
         distortions.colnames['x']='x_psf'
         distortions.colnames['y']='y_psf'
         distortions.phot_suffix = '.good.phot_psf.txt'
+    if args.xy1pass:
+        distortions.colnames['x']='x_1p'
+        distortions.colnames['y']='y_1p'
+        distortions.phot_suffix = '.good.phot.1pass.txt'
     
     # get the input file list
     distortions.get_inputfiles_imtable(args.input_filepatterns,

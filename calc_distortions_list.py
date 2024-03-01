@@ -6,9 +6,10 @@ Created on Tue Dec 19 10:11:00 2023
 @author: arest
 """
 
-import sys,argparse,os
+import sys,argparse,os,re
 from pdastro import unique,AandB,pdastroclass
 from calc_distortions import calc_distortions_class
+from astropy.time import Time
 
 class calc_distortions_list_class(calc_distortions_class):
     def __init__(self):
@@ -195,6 +196,7 @@ if __name__ == '__main__':
     parser.add_argument('--apertures', default=None, nargs='+', type=str, help='list of aperture names, e.g. nrca1_full')
     parser.add_argument('--filters', default=None, nargs='+', type=str, help='list of filter names, e.g. f200w.')
     parser.add_argument('--pupils', default=None, nargs='+', type=str, help='list of pupil names, e.g. clear. ')
+    parser.add_argument('--date4suffix', default=None, type=str, help='date of the form YYYY-MM-DD is added to the photcat suffix')
     parser.add_argument('--summaryfilename', default='distortion_summary.txt', help='filename that contains a summary of the distortion fits. If filename has not path, it is saved in the output directory (default=%(default)s).')
 
 
@@ -211,6 +213,15 @@ if __name__ == '__main__':
         distortions.colnames['x']='x_psf'
         distortions.colnames['y']='y_psf'
         distortions.phot_suffix = '.good.phot_psf.txt'
+    if args.xy1pass:
+        distortions.colnames['x']='x_1p'
+        distortions.colnames['y']='y_1p'
+        distortions.phot_suffix = '.good.phot.1pass_v2.txt'
+        if args.date4suffix is not None:
+            dateobj = Time(args.date4suffix)
+            date = re.sub('T.*','',dateobj.to_value('isot'))
+            distortions.phot_suffix = f'.{date}{distortions.phot_suffix}'
+    print(f'suffix for photcat files: {distortions.phot_suffix}')
     
     # get all the files
     distortions.get_inputfiles_imtable(args.input_filepatterns,
