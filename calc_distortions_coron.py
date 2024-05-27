@@ -48,9 +48,9 @@ class calc_distortions_coron_class(calc_distortions_class):
             print(f'Entry for {(apername, filtername, pupilname)} found:')
             self.coron_info.write(indices=[self.ix_coron_info])
             
-        # Copy the coron info into the results table
-        if self.ix_results is None: raise RuntimeError("BUG! the results table should have been already initialized in the initialize function!")
-        self.results.t.loc[self.ix_results,self.coron_info.t.columns]=self.coron_info.t.loc[self.ix_coron_info,self.coron_info.t.columns]
+        # Copy the coron info into the fit summary table
+        if self.ix_fitsum is None: raise RuntimeError("BUG! the fit summary table should have been already initialized in the initialize function!")
+        self.fitsummary.t.loc[self.ix_fitsum,self.coron_info.t.columns]=self.coron_info.t.loc[self.ix_coron_info,self.coron_info.t.columns]
 
         return(0)
     
@@ -72,11 +72,11 @@ class calc_distortions_coron_class(calc_distortions_class):
         ixs_top = self.ix_inrange('y',y_transition,None)
         self.t.loc[ixs_top,'yprime'] +=  y_step_pixels
 
-        # populate the results table the with values used for y_transition and y_step_pixels
+        # populate the fit summary table the with values used for y_transition and y_step_pixels
         # this already has been done in the initialize function, but just do it here again
-        # to make 100% sure the correct values are in the results table
-        if self.ix_results is None: raise RuntimeError("BUG! the results table should have been already initialized in the initialize function!")
-        self.results.t.loc[self.ix_results,['y_transition','y_step_pixels']]=[y_transition,y_step_pixels]
+        # to make 100% sure the correct values are in the fit summary table
+        if self.ix_fitsum is None: raise RuntimeError("BUG! the fit summary table should have been already initialized in the initialize function!")
+        self.fitsummary.t.loc[self.ix_fitsum,['y_transition','y_step_pixels']]=[y_transition,y_step_pixels]
 
     def get_ixs_use(self, ixs_use = None, downsample = None):
         if ixs_use is None:
@@ -95,12 +95,12 @@ class calc_distortions_coron_class(calc_distortions_class):
             ixs_bottom = self.ix_inrange(self.colnames['y'],self.coron_info.t.loc[self.ix_coron_info,'ymin2'],self.coron_info.t.loc[self.ix_coron_info,'ymax2'],indices = ixs_use)
             ixs_bottom = self.ix_inrange(self.colnames['x'],self.coron_info.t.loc[self.ix_coron_info,'xmin2'],self.coron_info.t.loc[self.ix_coron_info,'xmax2'],indices = ixs_bottom)
 
-            # Copy the coron info into the results table
+            # Copy the coron info into the fit summary table
             # this already has been done in the initialize function, but just do it here again
-            # to make 100% sure the correct values are in the results table
-            if self.ix_results is None: raise RuntimeError("BUG! the results table should have been already initialized in the initialize function!")
+            # to make 100% sure the correct values are in the fit summary table
+            if self.ix_fitsum is None: raise RuntimeError("BUG! the fit summary table should have been already initialized in the initialize function!")
             cols2copy = ['xmin1','xmax1','ymin1','ymax1','xmin2','xmax2','ymin2','ymax2']
-            self.results.t.loc[self.ix_results,cols2copy]=self.coron_info.t.loc[self.ix_coron_info,cols2copy]
+            self.fitsummary.t.loc[self.ix_fitsum,cols2copy]=self.coron_info.t.loc[self.ix_coron_info,cols2copy]
             
             if downsample is None:
                 downsample = self.coron_info.t.loc[self.ix_coron_info,'downsample']
@@ -109,8 +109,8 @@ class calc_distortions_coron_class(calc_distortions_class):
                 Nkeep = int(len(ixs_top)*downsample)
                 print(f'Downsampling bottom part ({len(ixs_bottom)}) to {downsample} of top part ({len(ixs_top)}): keeping {Nkeep}')
                 ixs_use = AorB(ixs_top,random.choices(ixs_bottom,k=Nkeep))
-                # copy downsample value into results table
-                self.results.t.loc[self.ix_results,'downsample']=downsample
+                # copy downsample value into fit summary table
+                self.fitsummary.t.loc[self.ix_fitsum,'downsample']=downsample
             else:
                 ixs_use = AorB(ixs_top,ixs_bottom)
     

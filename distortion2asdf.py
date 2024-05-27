@@ -51,7 +51,7 @@ class coeffs2asdf(pdastroclass):
         pdastroclass.__init__(self)
         
         self.imtable = None 
-        self.fitresults = None
+        self.fitsummary = None
         
         self.verbose=0
         
@@ -272,14 +272,14 @@ class coeffs2asdf(pdastroclass):
             self.imtable=pdastroclass()
             self.imtable.load(imtablefilename,verbose=2)
             
-            fitresultsfilename = re.sub('\.txt$','.fitresults.txt',self.filename)
-            self.fitresults = pdastroclass()
-            self.fitresults.load(fitresultsfilename,verbose=1)
-            self.fitresults.write()
+            fitsummaryfilename = re.sub('\.txt$','.fitsummary.txt',self.filename)
+            self.fitsummary = pdastroclass()
+            self.fitsummary.load(fitsummaryfilename,verbose=1)
+            self.fitsummary.write()
  
         else:
             self.imtable = None
-            self.fitresults = None
+            self.fitsummary = None
 
     def get_refpixold(self,siaf_instance, apername,instrument):
         """Return the reference location within the given aperture
@@ -692,9 +692,9 @@ class coeffs2asdf(pdastroclass):
         index_shift = Shift(1)
         
         # coronographic step??
-        if (self.fitresults is not None) and ('y_transition' in self.fitresults.t.columns) and isinstance(self.fitresults.t.loc[0,'y_transition'],float):
-            y_transition = self.fitresults.t.loc[0,'y_transition']
-            y_step_pixels = self.fitresults.t.loc[0,'y_step_pixels']
+        if (self.fitsummary is not None) and ('y_transition' in self.fitsummary.t.columns) and isinstance(self.fitsummary.t.loc[0,'y_transition'],float):
+            y_transition = self.fitsummary.t.loc[0,'y_transition']
+            y_step_pixels = self.fitsummary.t.loc[0,'y_step_pixels']
             print('BRYAN: add a model here that adds y_step_pixels for y>y_transition. This needs to be done before "index_shift & index_shift"')
             sys.exit(0)
         else:  
@@ -841,8 +841,8 @@ class coeffs2asdf(pdastroclass):
                     d.history.append(util.create_history_entry(f'{filename}'))
             else:
                 print('####   !!!!! WARNING !!!! Did not find column "fullimage" in the image table!')
-        if self.fitresults is not None:
-            d.history.extend(self.fitresults.t.to_string().split('\n'))
+        if self.fitsummary is not None:
+            d.history.extend(self.fitsummary.t.to_string().split('\n'))
 
         print(d.history)
         #sys.exit(0)

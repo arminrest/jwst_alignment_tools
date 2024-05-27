@@ -203,8 +203,8 @@ class calc_distortions_class(pdastrostatsclass):
  
         self.t = pd.DataFrame(columns=self.t.columns)
         
-        self.results=pdastroclass()
-        self.ix_results=None
+        self.fitsummary=pdastroclass()
+        self.ix_fitsum=None
 
         # output directory
         self.outdir = None
@@ -595,10 +595,10 @@ class calc_distortions_class(pdastrostatsclass):
         # set up the distortion coefficient table with the correct format!
         self.init_coefftable()
         
-        if len(self.results.t)>0: raise RuntimeError("BUG! The results table should be empty!")
-        self.ix_results=self.results.newrow({'apername':self.apername,
-                                             'filter':self.filtername,
-                                             'pupil':self.pupilname})
+        if len(self.fitsummary.t)>0: raise RuntimeError("BUG! The fit summary table should be empty!")
+        self.ix_fitsum=self.fitsummary.newrow({'apername':self.apername,
+                                               'filter':self.filtername,
+                                               'pupil':self.pupilname})
 
 
         
@@ -813,14 +813,14 @@ class calc_distortions_class(pdastrostatsclass):
             self.Sci2Idl_residualstats.write()
         # save residual statistics
         if self.savecoeff:
-            # Copy the residual stats into the results table!
+            # Copy the residual stats into the fit summary table!
             cols2copy = ['dx_mean','dx_mean_err','dx_stdev','dy_mean','dy_mean_err','dy_stdev','Ngood','Nclip']
-            self.results.t.loc[self.ix_results,cols2copy]=self.Sci2Idl_residualstats.t.loc[0,cols2copy]
+            self.fitsummary.t.loc[self.ix_fitsum,cols2copy]=self.Sci2Idl_residualstats.t.loc[0,cols2copy]
             
             # Save the residual stats!
-            # outfilename = f'{self.outbasename}.Sci2Idl.residual_stats.txt'
-            # if self.verbose: print(f'Saving SCI to IDL residual statistics to {outfilename}')
-            # self.Sci2Idl_residualstats.write(outfilename)
+            outfilename = f'{self.outbasename}.Sci2Idl.residual_stats.txt'
+            if self.verbose: print(f'Saving SCI to IDL residual statistics to {outfilename}')
+            self.Sci2Idl_residualstats.write(outfilename)
 
         if self.verbose>2:
             self.coeffs.write()
@@ -985,10 +985,10 @@ class calc_distortions_class(pdastrostatsclass):
         self.coeffs.write(coefffilename) 
         self.coefffilename = coefffilename
 
-        # Also write the results file
-        resultsfilename = f'{self.outbasename}.polycoeff.fitresults.txt'
-        print(f'Saving results file to {resultsfilename}')
-        self.results.write(resultsfilename)
+        # Also write the fit summary file
+        fitsummaryfilename = f'{self.outbasename}.polycoeff.fitsummary.txt'
+        print(f'Saving fits summary file to {fitsummaryfilename}')
+        self.fitsummary.write(fitsummaryfilename,indices=[self.ix_fitsum])
 
         return(coefffilename)
             
