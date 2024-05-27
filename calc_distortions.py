@@ -164,8 +164,6 @@ class calc_distortions_class(pdastrostatsclass):
     def __init__(self):
         pdastrostatsclass.__init__(self)
         
-        #self.summary = pdastroclass()
-
         
         # define colnames of input tables
         self.colnames={}
@@ -198,6 +196,7 @@ class calc_distortions_class(pdastrostatsclass):
 
         self.residual_plot_ylimits = (-0.4,0.4)
 
+        # initialize parameters that should be reset before every new fit
         self.clear()
 
     def clear(self):
@@ -245,7 +244,6 @@ class calc_distortions_class(pdastrostatsclass):
         parser.add_argument('--outrootdir', default='.', help='output root directory. The output directoy is the output root directory + the outsubdir if not None. (default=%(default)s)')
         parser.add_argument('--outsubdir', default=None, help='outsubdir added to output root directory (default=%(default)s)')
         parser.add_argument('--outbasename', default=None, help='if specified, override the default output basename {apername}_{filtername}_{pupilname}.')
-        #parser.add_argument('--summaryfilename', default='distortion_summary.txt', help='filename that contains a summary of the distortion fits. If filename has not path, it is saved in the output directory (default=%(default)s).')
         parser.add_argument('--progIDs', type=int, default=None, nargs="+", help='list of progIDs (default=%(default)s)')
         parser.add_argument('--xypsf', default=False, action='store_true', help='use the x,y from psf photometry. This assumes that the *jhat.good.phot_psf.txt file exists!')
         parser.add_argument('--xy1pass', default=False, action='store_true', help='use the x,y from Pass1 photometry. This assumes that the *jhat_sci1_xyrd.ecsv file exists!')
@@ -326,8 +324,6 @@ class calc_distortions_class(pdastrostatsclass):
     
         return(0)
         
- 
-    
     def set_outdir(self,outrootdir=None,outsubdir=None):
         self.outdir = outrootdir
         if self.outdir is None: self.outdir = '.'
@@ -817,10 +813,14 @@ class calc_distortions_class(pdastrostatsclass):
             self.Sci2Idl_residualstats.write()
         # save residual statistics
         if self.savecoeff:
+            # Copy the residual stats into the results table!
+            cols2copy = ['dx_mean','dx_mean_err','dx_stdev','dy_mean','dy_mean_err','dy_stdev','Ngood','Nclip']
+            self.results.t.loc[self.ix_results,cols2copy]=self.Sci2Idl_residualstats.t.loc[0,cols2copy]
+            
             # Save the residual stats!
-            outfilename = f'{self.outbasename}.Sci2Idl.residual_stats.txt'
-            if self.verbose: print(f'Saving SCI to IDL residual statistics to {outfilename}')
-            self.Sci2Idl_residualstats.write(outfilename)
+            # outfilename = f'{self.outbasename}.Sci2Idl.residual_stats.txt'
+            # if self.verbose: print(f'Saving SCI to IDL residual statistics to {outfilename}')
+            # self.Sci2Idl_residualstats.write(outfilename)
 
         if self.verbose>2:
             self.coeffs.write()
@@ -984,6 +984,12 @@ class calc_distortions_class(pdastrostatsclass):
             self.coeffs.write()   
         self.coeffs.write(coefffilename) 
         self.coefffilename = coefffilename
+
+        # Also write the results file
+        resultsfilename = f'{self.outbasename}.polycoeff.fitresults.txt'
+        print(f'Saving results file to {resultsfilename}')
+        self.results.write(resultsfilename)
+
         return(coefffilename)
             
     def fit_distortions(self,apername,filtername,pupilname, 

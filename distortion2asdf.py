@@ -51,6 +51,7 @@ class coeffs2asdf(pdastroclass):
         pdastroclass.__init__(self)
         
         self.imtable = None 
+        self.fitresults = None
         
         self.verbose=0
         
@@ -243,7 +244,7 @@ class coeffs2asdf(pdastroclass):
             self.t = self.t.rename(columns=mapper)
         elif re.search('^\s*AperName\s+siaf_index',firstline):
             #print('pandas table format!')
-            self.load(filename)
+            self.load(filename,verbose=1)
         else:
             raise RuntimeError(f'Something is wrong, cannot understand input file {filename} format')
 
@@ -270,8 +271,15 @@ class coeffs2asdf(pdastroclass):
                 raise RuntimeError(f'The suffix of the coefficient file is polycoeff.txt, and therefore we expect an image list file of the name {imtablefilename} which does not exist. This file is only used for meta data, so not essential, but still exiting...')
             self.imtable=pdastroclass()
             self.imtable.load(imtablefilename,verbose=2)
+            
+            fitresultsfilename = re.sub('\.txt$','.fitresults.txt',self.filename)
+            self.fitresults = pdastroclass()
+            self.fitresults.load(fitresultsfilename,verbose=1)
+            self.fitresults.write()
+ 
         else:
             self.imtable = None
+            self.fitresults = None
 
     def get_refpixold(self,siaf_instance, apername,instrument):
         """Return the reference location within the given aperture
@@ -682,7 +690,15 @@ class coeffs2asdf(pdastroclass):
     
         # SIAF coords
         index_shift = Shift(1)
-        model = index_shift & index_shift | xshift & yshift | core_model | v2shift & v3shift
+        
+        # coronographic step??
+        if (self.fitresults is not None) and ('y_transition' in self.fitresults.t.columns) and isinstance(self.fitresults.t.loc[0,'y_transition'],float):
+            y_transition = self.fitresults.t.loc[0,'y_transition']
+            y_step_pixels = self.fitresults.t.loc[0,'y_step_pixels']
+            print('BRYAN: add a model here that adds y_step_pixels for y>y_transition. This needs to be done before "index_shift & index_shift"')
+            sys.exit(0)
+        else:  
+            model = index_shift & index_shift | xshift & yshift | core_model | v2shift & v3shift
     
         # Since the inverse of all model components are now defined,
         # the total model inverse is also defined automatically
@@ -825,7 +841,8 @@ class coeffs2asdf(pdastroclass):
                     d.history.append(util.create_history_entry(f'{filename}'))
             else:
                 print('####   !!!!! WARNING !!!! Did not find column "fullimage" in the image table!')
-
+        if self.fitresults is not None:
+            d.history.extend(self.fitresults.t.to_string().split('\n'))
 
         print(d.history)
         #sys.exit(0)

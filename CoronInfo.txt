@@ -1,4 +1,4 @@
   apername filter   pupil  y_transition  y_step_pixels  downsample xmin1 xmax1 ymin1 ymax1  xmin2 xmax2 ymin2 ymax2
-nrca5_full  f335m maskrnd          1490           0.45         0.5   160  1760  1520  1800      5  2043     5  1450
+nrca5_full  f335m maskrnd          1490           0.45         0.0   160  1760  1520  1800      5  2043     5  1450
 nrcb5_full  f335m maskrnd          1490           0.45         0.2   160  1760  1520  1800      5  2043     5  1450
 nrca2_full  f210m maskrnd          1490           0.45         0.2   160  1760  1520  1800      5  2043     5  1450

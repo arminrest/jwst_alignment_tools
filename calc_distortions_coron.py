@@ -99,8 +99,8 @@ class calc_distortions_coron_class(calc_distortions_class):
             # this already has been done in the initialize function, but just do it here again
             # to make 100% sure the correct values are in the results table
             if self.ix_results is None: raise RuntimeError("BUG! the results table should have been already initialized in the initialize function!")
-            cols = ['xmin1','xmax1','ymin1','ymax1','xmin2','xmax2','ymin2','ymax2']
-            self.results.t.loc[self.ix_results,cols]=self.coron_info.t.loc[self.ix_coron_info,cols]
+            cols2copy = ['xmin1','xmax1','ymin1','ymax1','xmin2','xmax2','ymin2','ymax2']
+            self.results.t.loc[self.ix_results,cols2copy]=self.coron_info.t.loc[self.ix_coron_info,cols2copy]
             
             if downsample is None:
                 downsample = self.coron_info.t.loc[self.ix_coron_info,'downsample']
