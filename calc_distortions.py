@@ -164,6 +164,9 @@ class calc_distortions_class(pdastrostatsclass):
     def __init__(self):
         pdastrostatsclass.__init__(self)
         
+        #self.summary = pdastroclass()
+
+        
         # define colnames of input tables
         self.colnames={}
         self.colnames['x']='x'
@@ -178,7 +181,7 @@ class calc_distortions_class(pdastrostatsclass):
         self.verbose = 0
         self.showplots = 0
         self.saveplots = 0
-
+        
         self.imtable = pdastroclass(columns=['imID','progID','fullimage'])
         #,'DETECTOR','INSTRUME','APERNAME','FILTER','PUPIL','V2_REF','V3_REF','V3I_YANG', 'V2cen','V3cen','V3IdlYAnglecen'])
 
@@ -200,6 +203,9 @@ class calc_distortions_class(pdastrostatsclass):
     def clear(self):
  
         self.t = pd.DataFrame(columns=self.t.columns)
+        
+        self.results=pdastroclass()
+        self.ix_results=None
 
         # output directory
         self.outdir = None
@@ -225,7 +231,7 @@ class calc_distortions_class(pdastrostatsclass):
         
         self.Sci2Idl_residualstats =  pdastrostatsclass()
         self.Idl2Sci_residualstats =  pdastrostatsclass()
-        
+                
     def define_options(self,parser=None,usage=None,conflict_handler='resolve'):
         if parser is None:
             parser = argparse.ArgumentParser(usage=usage,conflict_handler=conflict_handler)
@@ -239,12 +245,13 @@ class calc_distortions_class(pdastrostatsclass):
         parser.add_argument('--outrootdir', default='.', help='output root directory. The output directoy is the output root directory + the outsubdir if not None. (default=%(default)s)')
         parser.add_argument('--outsubdir', default=None, help='outsubdir added to output root directory (default=%(default)s)')
         parser.add_argument('--outbasename', default=None, help='if specified, override the default output basename {apername}_{filtername}_{pupilname}.')
+        #parser.add_argument('--summaryfilename', default='distortion_summary.txt', help='filename that contains a summary of the distortion fits. If filename has not path, it is saved in the output directory (default=%(default)s).')
         parser.add_argument('--progIDs', type=int, default=None, nargs="+", help='list of progIDs (default=%(default)s)')
         parser.add_argument('--xypsf', default=False, action='store_true', help='use the x,y from psf photometry. This assumes that the *jhat.good.phot_psf.txt file exists!')
         parser.add_argument('--xy1pass', default=False, action='store_true', help='use the x,y from Pass1 photometry. This assumes that the *jhat_sci1_xyrd.ecsv file exists!')
 
         return(parser)
-    
+
     def plot_residuals(self, xcol, ycol, ixs_good, ixs_cut, ixs_excluded, spX, title=None, residual_limits=(-0.4,0.4)):
         if len(ixs_excluded)>0: self.t.loc[ixs_excluded].plot(xcol,ycol,ax=spX,ylim=residual_limits,ylabel=ycol, **self.plot_style['excluded'])
         if len(ixs_cut)>0:      self.t.loc[ixs_cut].plot(xcol,ycol,ax=spX,ylim=residual_limits,ylabel=ycol, **self.plot_style['cut'])
@@ -592,6 +599,13 @@ class calc_distortions_class(pdastrostatsclass):
         # set up the distortion coefficient table with the correct format!
         self.init_coefftable()
         
+        if len(self.results.t)>0: raise RuntimeError("BUG! The results table should be empty!")
+        self.ix_results=self.results.newrow({'apername':self.apername,
+                                             'filter':self.filtername,
+                                             'pupil':self.pupilname})
+
+
+        
         return(ixs_im)
     
             
@@ -657,7 +671,6 @@ class calc_distortions_class(pdastrostatsclass):
         self.t = pd.concat(frames,ignore_index=True)
         print(f'{len(self.t)} rows total')
         
-        print(f'NNNNNNNNNNN {self.ixs_im} {ixs_im_used}')
         if len(self.ixs_im) != len(ixs_im_used):
             print(f'Keeping {len(ixs_im_used)} of {len(self.ixs_im)} images!')
         self.ixs_im = self.imtable.getindices(ixs_im_used)
@@ -703,14 +716,23 @@ class calc_distortions_class(pdastrostatsclass):
 
         return(0)
         
-    def fit_Sci2Idl(self, ixs_use = None, Nsigma=3.0,percentile_cut_firstiteration=80):
-        if self.verbose: print('### fitting Sci2Idl...')
+    def get_ixs_use(self, ixs_use = None):
         
         if ixs_use is None:
             ixs_use = self.getindices()
         self.ixs_use = ixs_use
         self.ixs_excluded =  AnotB(self.getindices(),ixs_use)
         if self.verbose: print(f'{len(ixs_use)} entries used for fit, {len(self.ixs_excluded)} excluded')  
+        
+        
+    def fit_Sci2Idl(self, ixs_use = None, Nsigma=3.0,percentile_cut_firstiteration=80):
+        if self.verbose: print('### fitting Sci2Idl...')
+        
+        #if ixs_use is None:
+        #    ixs_use = self.getindices()
+        #self.ixs_use = ixs_use
+        #self.ixs_excluded =  AnotB(self.getindices(),ixs_use)
+        #if self.verbose: print(f'{len(ixs_use)} entries used for fit, {len(self.ixs_excluded)} excluded')  
 
         # Idl2Sci_residualstats will contain the statistics of the residuals
         self.Sci2Idl_residualstats =  pdastrostatsclass()
@@ -994,7 +1016,6 @@ class calc_distortions_class(pdastrostatsclass):
         if self.savecoeff:
             rmfile(coefffilename)
 
-
         if len(self.ixs_im)==0:
             print('WARNING! No matching images for {apername} {filtername} {pupilname}! Skipping')
             return(1,None)
@@ -1008,6 +1029,9 @@ class calc_distortions_class(pdastrostatsclass):
         self.calc_refcat_xy_idl()
         self.calc_xyprime()
         
+        # get the indices to be used for the fit
+        self.get_ixs_use()
+
         # Now do the fitting!
         self.fit_Sci2Idl()
         self.fit_Idl2Sci()
@@ -1058,7 +1082,7 @@ if __name__ == '__main__':
     distortions.get_inputfiles_imtable(args.input_filepatterns,
                                        directory=args.input_dir,
                                        progIDs=args.progIDs)
-    
+
     (errorflag,) = distortions.fit_distortions(args.aperture, args.filter, args.pupil,
                                                outrootdir=args.outrootdir, 
                                                outsubdir=args.outsubdir,

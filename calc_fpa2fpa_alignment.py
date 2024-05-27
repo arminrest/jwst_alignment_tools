@@ -34,6 +34,7 @@ def calc_V3IdlYAngle(v2_1,v3_1,v2_2,v3_2):
     if V3IdlYAngle<-90.0: V3IdlYAngle+=180.0
     return(V3IdlYAngle)
     
+"""
 def calc_v2v3center_info(ImageModel,siaf_aperture,dy=0.02):
         detector_to_v2v3=ImageModel.meta.wcs.get_transform('detector', 'v2v3') 
 
@@ -47,6 +48,26 @@ def calc_v2v3center_info(ImageModel,siaf_aperture,dy=0.02):
 
         V3IdlYAngle = calc_V3IdlYAngle(v2_1,v3_1,v2_2,v3_2)
         return(v2_0,v3_0,V3IdlYAngle)
+"""
+    
+def calc_v2v3center_info(ImageModel,siaf_aperture=None,dy=0.02):
+    detector_to_v2v3=ImageModel.meta.wcs.get_transform('detector', 'v2v3') 
+
+    # get the x/y coordinates of the center
+    if siaf_aperture is None:
+        siaf_instrument = pysiaf.Siaf(ImageModel.meta.instrument.name) 
+        siaf_aperture = siaf_instrument.apertures[ImageModel.meta.aperture.name]
+
+    x0=siaf_aperture.XSciRef-1.0
+    y0=siaf_aperture.YSciRef-1.0
+
+    v2_0,v3_0 = detector_to_v2v3(x0,y0)
+    v2_1,v3_1 = detector_to_v2v3(x0,y0+dy)
+    v2_2,v3_2 = detector_to_v2v3(x0,y0-dy)
+
+    V3IdlYAngle = calc_V3IdlYAngle(v2_1,v3_1,v2_2,v3_2)
+    return(v2_0,v3_0,V3IdlYAngle)
+    
     
 
 class fpa2fpa_alignmentclass(pdastroclass):

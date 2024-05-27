@@ -92,15 +92,17 @@ class v2v3refclass(pdastroclass):
         return(parser)
 
     
-    def get_v2v3info(self,aperture,filtername=None,pupilname=None,progID=None):
+    def get_v2v3info(self,aperture,filtername=None,pupilname=None,progID=None,verbose=0):
         # get all entries for aperture
         ixs = self.ix_equal(self.param2col['apername'],aperture.lower())
+        if verbose:print(f'{len(ixs)} with aperture {aperture.lower()}')
         
         # check for filter?
         if filtername is not None:
             if not ('filter' in  self.param2col):
                 raise RuntimeError("column name for filter is not defined!")
             ixs = self.ix_equal(self.param2col['filter'],filtername.lower(),indices=ixs)
+            if verbose:print(f'{len(ixs)} left with aperture {aperture.lower()}')
 
         # check for pupil?
         if pupilname is not None:
@@ -121,7 +123,7 @@ class v2v3refclass(pdastroclass):
             self.write(columns=self.param2col.values(),indices=ixs)
             raise RuntimeError(f'more than one v2v3 entries found for aperture {aperture}')
         
-        print('vvvvv',self.param2col['V2Ref'])
+        #print('vvvvv',self.param2col['V2Ref'])
         
         return(float(self.t.loc[ixs[0],self.param2col['V2Ref']]),
                float(self.t.loc[ixs[0],self.param2col['V3Ref']]),

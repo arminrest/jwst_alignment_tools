@@ -15,8 +15,6 @@ class calc_distortions_list_class(calc_distortions_class):
     def __init__(self):
         calc_distortions_class.__init__(self)
         
-        self.summary = pdastroclass()
-        
     def remove_summary_entry(self,apername,filtname,pupilname):
         if len(self.summary.t)>0:
             ixs = self.summary.ix_equal('apername', apername)
@@ -30,6 +28,7 @@ class calc_distortions_list_class(calc_distortions_class):
                 self.summary.t.drop(index=ixs,inplace=True)
         return(0)
 
+        
     def fit_all_distortions(self, apertures=None, filters=None, pupils=None, 
                             outrootdir=None, outsubdir=None,
                             outbasename=None,

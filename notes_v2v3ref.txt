@@ -218,5 +218,50 @@ python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coro
 hawki
 python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-FGS1-HAWKI-forRND --nircam_dir /ifs/jwst/wit/nircam/distortions/coron_test/4447/JHAT-4447-A2-F210M-RND-HAWKI -vv   --savetable v2v3results/masks_f210m/v2/mask_RND_f210m.v2.txt
 
+----------------
+
+May 6, 2022 is the first date images after FGS refocusing were taken!!!
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 4447 --instrument 'nircam' --filetype _cal.fits 
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 4447 --instrument 'fgs' --filetype _cal.fits 
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1073 --instrument 'nircam' --filetype _cal.fits --obsnum 4 5 6 7
+###jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1073 --instrument 'fgs' --filetype _cal.fits 
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1074 --instrument 'nircam' --filetype _cal.fits --obsnum 1 2 3
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1074 --instrument 'fgs' --filetype _cal.fits --obsnum 1 2 3
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1477 --instrument 'nircam' --filetype _cal.fits 
+###jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1477 --instrument 'fgs' --filetype _cal.fits 
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1481 --instrument 'nircam' --filetype _cal.fits 
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1481 --instrument 'fgs' --filetype _cal.fits 
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1478 --instrument 'nircam' --filetype _cal.fits 
+###jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1478 --instrument 'fgs' --filetype _cal.fits 
+
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1476 --instrument 'nircam' --filetype _cal.fits 
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 1476 --instrument 'fgs' --filetype _cal.fits 
+
+---------------------
+
+run_st_wcs_align.py  /Volumes/Ext1/download/01476/obsnum01/jw01476001027_02101_00001_nrcblong_cal.fits --outrootdir '/Volumes/Ext1/jhat/01476' --outsubdir test -vvv --refcat /Users/arest/nircam/jwst_distortions_tools/LMC_gaia_DR3.nrcposs --saveplots -tt -pp  --histocut_order dxdy --objmag_lim 17 22.5 --iterate_with_xyshifts --skip_if_exists --overwr --rough_cut_px_min 1.5 --rough_cut_px_max 1.5 --d_rotated_Nsigma 5.0 --sip_err 1.0 --distortion_file /Volumes/Ext1/distcoeff/v10_xy1pass/nrcb5_full_f444w_f405n.polycoeff.asdf
+
+run_st_wcs_align_batch.py  --input_dir  /Users/arest/nircam/jwst_alignment_tools/dist_test/download  --input_files '*_cal.fits' --outrootdir '/Users/arest/nircam/jwst_alignment_tools/dist_test/jhat' --outsubdir test_applydistortion  --addfilter2outsubdir --overwr -vv --refcat gaia --saveplots -tt --histocut_order dxdy --rough_cut_px_min 2.5 --rough_cut_px_max 2.5 --d2d_max 1.5 --slope_min -0.008 --objmag_lim 14 100  --iterate_with_xyshifts   --skip_if_exists --distortioncoeffs_dir /Volumes/Ext1/distcoeff/v10_xy1pass
 
 
+(base) arminmac4:~ arest$ ls */*/set_telescope_pointing.py
+anaconda3/bin/set_telescope_pointing.py
+
+mk_siaf_alignment_xml.ipynb
+https://jwst-pipeline.readthedocs.io/en/latest/_modules/jwst/lib/set_telescope_pointing.html
+https://jwst-pipeline.readthedocs.io/en/latest/api/jwst.lib.set_telescope_pointing.add_wcs.html#jwst.lib.set_telescope_pointing.add_wcs
+https://jwst-pipeline.readthedocs.io/en/latest/_modules/jwst/lib/v1_calculate.html
+
+/Users/arest/anaconda3/bin/set_telescope_pointing.py
+
+import  jwst.lib.set_telescope_pointing
+from  jwst.lib.siafdb import SIAF, SiafDb
+from  jwst.lib.set_telescope_pointing import add_wcs
+
+/Users/arest/nircam/mirage/mirage/utils/set_telescope_pointing_separated.py
