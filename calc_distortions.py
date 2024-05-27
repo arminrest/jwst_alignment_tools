@@ -10,6 +10,7 @@ Calculdate the distortions of detector/filter/pupil using a list of images and t
 """
 
 import os,re,sys,copy
+from astropy.time import Time
 from jwst.datamodels import ImageModel
 #from jwst import datamodels
 #import astropy.units as u
@@ -231,7 +232,18 @@ class calc_distortions_class(pdastrostatsclass):
         self.Sci2Idl_residualstats =  pdastrostatsclass()
         self.Idl2Sci_residualstats =  pdastrostatsclass()
                 
-    def define_options(self,parser=None,usage=None,conflict_handler='resolve'):
+    def define_arguments(self,parser=None,usage=None,conflict_handler='resolve'):
+        if parser is None:
+            parser = argparse.ArgumentParser(usage=usage,conflict_handler=conflict_handler)
+
+        parser.add_argument('aperture', type=str, help='aperture name, e.g. nrca1_full')
+        parser.add_argument('filter', type=str, help='filter name, e.g. f200w. Can be "None" if the instrument does not have filters like FGS')
+        parser.add_argument('pupil', type=str, help='pupil name, e.g. clear. Can be "None" if the instrument does not have pupils like FGS')
+        parser.add_argument('input_filepatterns', nargs='+', type=str, help='list of input file(pattern)s. These get added to input_dir if input_dir is not None')
+
+        return(parser)
+
+    def define_optional_arguments(self,parser=None,usage=None,conflict_handler='resolve'):
         if parser is None:
             parser = argparse.ArgumentParser(usage=usage,conflict_handler=conflict_handler)
 
@@ -247,8 +259,29 @@ class calc_distortions_class(pdastrostatsclass):
         parser.add_argument('--progIDs', type=int, default=None, nargs="+", help='list of progIDs (default=%(default)s)')
         parser.add_argument('--xypsf', default=False, action='store_true', help='use the x,y from psf photometry. This assumes that the *jhat.good.phot_psf.txt file exists!')
         parser.add_argument('--xy1pass', default=False, action='store_true', help='use the x,y from Pass1 photometry. This assumes that the *jhat_sci1_xyrd.ecsv file exists!')
+        parser.add_argument('--date4suffix', default=None, type=str, help='date of the form YYYY-MM-DD is added to the photcat suffix')
 
         return(parser)
+    
+    def define_xycols(self,xypsf=False,xy1pass=False,date4suffix=None):
+
+        # set different x/y colnames and phot_suffices if psf photometry
+        if xypsf:
+            self.colnames['x']='x_psf'
+            self.colnames['y']='y_psf'
+            self.phot_suffix = '.good.phot_psf.txt'
+        if xy1pass:
+            self.colnames['x']='x_1p'
+            self.colnames['y']='y_1p'
+            self.phot_suffix = '.good.phot.1pass_v2.txt'
+            if date4suffix is not None:
+                dateobj = Time(date4suffix)
+                date = re.sub('T.*','',dateobj.to_value('isot'))
+                self.phot_suffix = f'.{date}{self.phot_suffix}'
+        print(f'suffix for photcat files: {self.phot_suffix}')
+        
+        return(0)
+        
 
     def plot_residuals(self, xcol, ycol, ixs_good, ixs_cut, ixs_excluded, spX, title=None, residual_limits=(-0.4,0.4)):
         if len(ixs_excluded)>0: self.t.loc[ixs_excluded].plot(xcol,ycol,ax=spX,ylim=residual_limits,ylabel=ycol, **self.plot_style['excluded'])
@@ -1066,7 +1099,7 @@ if __name__ == '__main__':
     parser.add_argument('filter', type=str, help='filter name, e.g. f200w. Can be "None" if the instrument does not have filters like FGS')
     parser.add_argument('pupil', type=str, help='pupil name, e.g. clear. Can be "None" if the instrument does not have pupils like FGS')
     parser.add_argument('input_filepatterns', nargs='+', type=str, help='list of input file(pattern)s. These get added to input_dir if input_dir is not None')
-    parser = distortions.define_options(parser=parser)
+    parser = distortions.define_optional_arguments(parser=parser)
 
     args = parser.parse_args()
     

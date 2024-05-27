@@ -15,7 +15,12 @@ class calc_distortions_coron_class(calc_distortions_class):
         calc_distortions_class.__init__(self)
         self.coron_info = pdastroclass()
         self.ix_coron_info = None
-        
+    
+    def define_optional_arguments(self,parser=None,usage=None,conflict_handler='resolve'):
+        calc_distortions_class.define_optional_arguments(self,parser=parser,usage=usage,conflict_handler=conflict_handler)
+        parser.add_argument('--coron_info_filename', type=str, default='./CoronInfo.txt', help='')
+        return(parser)
+    
     #def initialize(self,coron_info_filename,*args,**kwargs):
     def initialize(self,coron_info_filename,
                    apername, filtername, pupilname,
@@ -189,35 +194,27 @@ if __name__ == '__main__':
     
     distortions = calc_distortions_coron_class()
 
+    # get the arguments
     parser = argparse.ArgumentParser(conflict_handler='resolve')
-    parser.add_argument('aperture', type=str, help='aperture name, e.g. nrca1_full')
-    parser.add_argument('filter', type=str, help='filter name, e.g. f200w. Can be "None" if the instrument does not have filters like FGS')
-    parser.add_argument('pupil', type=str, help='pupil name, e.g. clear. Can be "None" if the instrument does not have pupils like FGS')
-    parser.add_argument('input_filepatterns', nargs='+', type=str, help='list of input file(pattern)s. These get added to input_dir if input_dir is not None')
-    parser.add_argument('--coron_info_filename', type=str, default='./CoronInfo.txt', help='')
-    parser = distortions.define_options(parser=parser)
-
+    parser = distortions.define_arguments(parser=parser)
+    parser = distortions.define_optional_arguments(parser=parser)
     args = parser.parse_args()
     
+    # set some verbose, plot, and save flags
     distortions.verbose=args.verbose
     distortions.savecoeff=not (args.skip_savecoeff)
     distortions.showplots=args.showplots
     distortions.saveplots=args.saveplots
     
-    if args.xypsf:
-        distortions.colnames['x']='x_psf'
-        distortions.colnames['y']='y_psf'
-        distortions.phot_suffix = '.good.phot_psf.txt'
-    if args.xy1pass:
-        distortions.colnames['x']='x_1p'
-        distortions.colnames['y']='y_1p'
-        distortions.phot_suffix = '.good.phot.1pass.txt'
-    
+    # define the x/y columns and phot cat suffix based on what photometry is used
+    distortions.define_xycols(xypsf=args.xypsf,xy1pass=args.xy1pass,date4suffix=args.date4suffix)
+        
     # get the input file list
     distortions.get_inputfiles_imtable(args.input_filepatterns,
                                        directory=args.input_dir,
                                        progIDs=args.progIDs)
 
+    # fit the distortions!
     (errorflag,coefffilename) = distortions.fit_distortions(args.aperture, args.filter, args.pupil,
                                                args.coron_info_filename,
                                                outrootdir=args.outrootdir, 
