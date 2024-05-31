@@ -1094,6 +1094,28 @@ if __name__ == '__main__':
     
     distortions = calc_distortions_class()
 
+    # get the arguments
+    parser = argparse.ArgumentParser(conflict_handler='resolve')
+    parser = distortions.define_arguments(parser=parser)
+    parser = distortions.define_optional_arguments(parser=parser)
+    args = parser.parse_args()
+    
+    # set some verbose, plot, and save flags
+    distortions.verbose=args.verbose
+    distortions.savecoeff=not (args.skip_savecoeff)
+    distortions.showplots=args.showplots
+    distortions.saveplots=args.saveplots
+    
+    # define the x/y columns and phot cat suffix based on what photometry is used
+    distortions.define_xycols(xypsf=args.xypsf,xy1pass=args.xy1pass,date4suffix=args.date4suffix)
+        
+    # get the input file list
+    distortions.get_inputfiles_imtable(args.input_filepatterns,
+                                       directory=args.input_dir,
+                                       progIDs=args.progIDs)
+
+
+    """
     parser = argparse.ArgumentParser(conflict_handler='resolve')
     parser.add_argument('aperture', type=str, help='aperture name, e.g. nrca1_full')
     parser.add_argument('filter', type=str, help='filter name, e.g. f200w. Can be "None" if the instrument does not have filters like FGS')
@@ -1121,7 +1143,9 @@ if __name__ == '__main__':
     distortions.get_inputfiles_imtable(args.input_filepatterns,
                                        directory=args.input_dir,
                                        progIDs=args.progIDs)
+    """
 
+    # fit the distortions!
     (errorflag,) = distortions.fit_distortions(args.aperture, args.filter, args.pupil,
                                                outrootdir=args.outrootdir, 
                                                outsubdir=args.outsubdir,

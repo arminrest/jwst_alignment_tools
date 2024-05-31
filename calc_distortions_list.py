@@ -15,6 +15,8 @@ class calc_distortions_list_class(calc_distortions_class):
     def __init__(self):
         calc_distortions_class.__init__(self)
         
+        self.summary = pdastroclass()
+
     def remove_summary_entry(self,apername,filtname,pupilname):
         if len(self.summary.t)>0:
             ixs = self.summary.ix_equal('apername', apername)
@@ -150,8 +152,11 @@ class calc_distortions_list_class(calc_distortions_class):
                     elif errorflag == 0:
                         goodcounter += 1
                         # copy over the statistics of residuals
-                        cols=['dx_mean','dx_mean_err','dx_stdev','dy_mean','dy_mean_err','dy_stdev','Ngood','Nclip']
-                        self.summary.t.loc[ix_result,cols] = self.Sci2Idl_residualstats.t.loc[0,cols]
+                        #cols=['dx_mean','dx_mean_err','dx_stdev','dy_mean','dy_mean_err','dy_stdev','Ngood','Nclip']
+                        #self.summary.t.loc[ix_result,cols] = self.Sci2Idl_residualstats.t.loc[0,cols]
+                        cols = self.fitsummary.t.columns
+                        self.summary.t.loc[ix_result,cols] = self.fitsummary.t.loc[self.ix_fitsum,cols]
+                        
 
                     # We save the summary file after each distortion calculation in order to make sure
                     # that we do not loose this info in case the loop crashes.

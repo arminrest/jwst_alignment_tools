@@ -21,22 +21,32 @@ class calc_distortions_coron_class(calc_distortions_class):
         parser.add_argument('--coron_info_filename', type=str, default='./CoronInfo.txt', help='')
         return(parser)
     
-    #def initialize(self,coron_info_filename,*args,**kwargs):
-    def initialize(self,coron_info_filename,
-                   apername, filtername, pupilname,
-                   **kwargs):
-        # standard initialization
-        calc_distortions_class.initialize(self, apername, filtername, pupilname,**kwargs)
-        
-        # make sure this is is coron mask!
-        if (re.search('^mask',pupilname) is None):
-            raise RuntimeError(f'Looks like pupil={pupilname} is not a mask!')
-            
+    def load_coron_info(self,coron_info_filename):
         # Load the coronograph info
         if not os.path.isfile(coron_info_filename): raise RuntimeError(f'coron info file {coron_info_filename} does not exist!')
         self.coron_info.load(coron_info_filename,verbose=1)
+    
+    #def initialize(self,coron_info_filename,*args,**kwargs):
+    def initialize(self, *args,
+                   #coron_info_filename,
+                   #apername, filtername, pupilname,
+                   **kwargs):
+        # standard initialization
+        #calc_distortions_class.initialize(self, apername, filtername, pupilname,**kwargs)
+        calc_distortions_class.initialize(self, *args,**kwargs)
+        
+        # make sure this is is coron mask!
+        if (re.search('^mask',self.pupilname) is None):
+            raise RuntimeError(f'Looks like pupil={pupilname} is not a mask!')
+            
+        # Load the coronograph info
+        #if not os.path.isfile(coron_info_filename): raise RuntimeError(f'coron info file {coron_info_filename} does not exist!')
+        #self.coron_info.load(coron_info_filename,verbose=1)
+        
+        
+        # get the index of the detector/filter/pupil if it exists in the coron info file
         self.ix_coron_info = self.coron_info.getindices()
-        for (colname,value) in zip(("apername","filter","pupil"),(apername, filtername, pupilname)):
+        for (colname,value) in zip(("apername","filter","pupil"),(self.apername, self.filtername, self.pupilname)):
             #print(value,colname,len(self.ix_coron_info))
             self.ix_coron_info = self.coron_info.ix_equal(colname,value,indices=self.ix_coron_info)
         
@@ -50,7 +60,7 @@ class calc_distortions_coron_class(calc_distortions_class):
             raise RuntimeError(f'More than one entry for {(apername, filtername, pupilname)}')
         else:
             self.ix_coron_info = self.ix_coron_info[0]
-            print(f'Entry for {(apername, filtername, pupilname)} found:')
+            print(f'Entry for {(self.apername, self.filtername, self.pupilname)} found:')
             self.coron_info.write(indices=[self.ix_coron_info])
             
         # Copy the coron info into the fit summary table
@@ -122,73 +132,7 @@ class calc_distortions_coron_class(calc_distortions_class):
         self.ixs_use = ixs_use
         self.ixs_excluded =  AnotB(self.getindices(),ixs_use)
         if self.verbose: print(f'{len(ixs_use)} entries used for fit, {len(self.ixs_excluded)} excluded')  
-        
-
-    def fit_distortions(self,apername,filtername,pupilname, 
-                        coron_info_filename,
-                        outrootdir=None, outsubdir=None,
-                        outbasename=None,
-                        skip_if_exists=False,
-                        ixs_im=None, progIDs=None,
-                        raiseErrorFlag=True):
-        
-        # Make sure nothing from previous fits is left!
-        self.clear()
-        
-        # Prepare the fit
-        self.initialize(coron_info_filename,
-                        apername, filtername, pupilname,
-                        ixs_im=ixs_im, progIDs=progIDs,
-                        raiseErrorFlag=raiseErrorFlag)
-        self.set_outbasename(outrootdir=outrootdir,outsubdir=outsubdir,outbasename=outbasename)
-
-        # self.coefffilename will be set if self.savecoeff and after the new coefficients are saved
-        self.coefffilename = None
-
-        coefffilename = self.get_coefffilename()
-        if skip_if_exists:
-            if os.path.isfile(coefffilename):
-                print(f'Coeff file {coefffilename} already exists, skipping recreating it since skip_if_exists==True')
-                return(-1,coefffilename)
-        # remove old coefficients if the new coefficients are supposed to be saved
-        # this makes sure that old coefficients don't accidently hang around if there
-        # is a premature exit of this routine.
-        if self.savecoeff:
-            rmfile(coefffilename)
-
-        if len(self.ixs_im)==0:
-            print('WARNING! No matching images for {apername} {filtername} {pupilname}! Skipping')
-            return(1,None)
-        
-        self.load_catalogs(cat_suffix = self.phot_suffix)
-        if len(self.t)<self. Nmin4distortions:
-            print('WARNING! Not enough objects ({len(self.t)}<{self. Nmin4distortions} in catalog for {apername} {filtername} {pupilname}! Skipping')
-            return(2,None)            
-            
-        # Calculate xyprime and refcat_xy_idl: this is what is used to fit the distortions!
-        self.calc_refcat_xy_idl()
-        self.calc_xyprime()
-
-        # get the indices to be used for the fit
-        self.get_ixs_use()
-        
-        # Now do the fitting!
-        self.fit_Sci2Idl()
-        self.fit_Idl2Sci()
-
-        # Save the coefficients
-        if self.savecoeff:
-            self.save_coeffs()
-        else:
-            self.coefffilename = None
-        print(f'Distortions for {self.apername} {self.filtername} {self.pupilname} finished!')
-
-        if (len(self.ixs4fit)<self. Nmin4distortions):
-            print('WARNING! Not enough objects ({len(self.ixs4fit)}<{self. Nmin4distortions} pass the cut for {apername} {filtername} {pupilname}! Skipping')
-            return(3,self.coefffilename)
-
-        return(0,self.coefffilename)
- 
+         
 
 if __name__ == '__main__':
     
@@ -209,6 +153,9 @@ if __name__ == '__main__':
     # define the x/y columns and phot cat suffix based on what photometry is used
     distortions.define_xycols(xypsf=args.xypsf,xy1pass=args.xy1pass,date4suffix=args.date4suffix)
         
+    # get the coron info table!
+    distortions.load_coron_info(args.coron_info_filename)
+    
     # get the input file list
     distortions.get_inputfiles_imtable(args.input_filepatterns,
                                        directory=args.input_dir,
@@ -216,7 +163,6 @@ if __name__ == '__main__':
 
     # fit the distortions!
     (errorflag,coefffilename) = distortions.fit_distortions(args.aperture, args.filter, args.pupil,
-                                               args.coron_info_filename,
                                                outrootdir=args.outrootdir, 
                                                outsubdir=args.outsubdir,
                                                outbasename=args.outbasename,
