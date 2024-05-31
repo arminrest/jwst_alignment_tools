@@ -684,12 +684,15 @@ class coeffs2asdf(pdastroclass):
             # in y. No shift in x.
             # Set the "center" of the box at the top of the detector, and make the width
             # equal to twice 2047 minus the y coordinate of the transition.
-            box_width = (2047 - y_transition) * 2
-            com_y = Box1D(amplitude=y_step_pixels, x_0=2047, width=box_width)
+            
+            ysize = aper_siaf.YSciSize-1.0
+            
+            box_width = (ysize - y_transition) * 2
+            com_y = Box1D(amplitude=y_step_pixels, x_0=ysize, width=box_width)
             com_x = Const1D(0)
             com = Mapping([0, 1]) | com_x & com_y
 
-            inv_com_y = Box1D(amplitude=0. - y_step_pixels, x_0=2047, width=box_width)
+            inv_com_y = Box1D(amplitude=0. - y_step_pixels, x_0=ysize, width=box_width)
             com.inverse = Mapping([0, 1]) | com_x & inv_com_y
 
             # Now string the models together to make a single transformation
