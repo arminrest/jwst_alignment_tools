@@ -37,7 +37,7 @@ class calc_distortions_coron_class(calc_distortions_class):
         
         # make sure this is is coron mask!
         if (re.search('^mask',self.pupilname) is None):
-            raise RuntimeError(f'Looks like pupil={pupilname} is not a mask!')
+            raise RuntimeError(f'Looks like pupil={self.pupilname} is not a mask!')
             
         # Load the coronograph info
         #if not os.path.isfile(coron_info_filename): raise RuntimeError(f'coron info file {coron_info_filename} does not exist!')
@@ -53,11 +53,11 @@ class calc_distortions_coron_class(calc_distortions_class):
         # Make sure there is not more than one entry for the given apername/filter/pupil in Coron info file
         if len(self.ix_coron_info)<1:
             self.ix_coron_info = -1
-            print(f'WARNING: Could not find entry for {(apername, filtername, pupilname)}. This means that this will be treated like any normal imaging!')
+            print(f'WARNING: Could not find entry for {(self.apername, self.filtername, self.pupilname)}. This means that this will be treated like any normal imaging!')
         elif len(self.ix_coron_info)>1:
             self.coron_info.write(indices=self.ix_coron_info)
             self.ix_coron_info = None
-            raise RuntimeError(f'More than one entry for {(apername, filtername, pupilname)}')
+            raise RuntimeError(f'More than one entry for {(self.apername, self.filtername, self.pupilname)}')
         else:
             self.ix_coron_info = self.ix_coron_info[0]
             print(f'Entry for {(self.apername, self.filtername, self.pupilname)} found:')
