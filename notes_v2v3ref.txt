@@ -31,6 +31,9 @@ export JWSTDOWNLOAD_OUTDIR="/Volumes/Ext1/download"
 jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 4447 --instrument 'nircam' --filetype _cal.fits 
 jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 4447 --instrument 'fgs' --filetype _cal.fits 
 
+cycle 3:
+6627
+
 
 export JWSTDOWNLOAD_OUTDIR="/Volumes/Ext1/download"
 jwst_download.py -v --config jwst_query.cfg --lookbacktime 500 --propID 1476 --instrument 'nircam' --filetype _cal.fits  --sca a5 
@@ -222,6 +225,9 @@ python calc_fgs_fpa_alignment.py --fgs_dir /ifs/jwst/wit/nircam/distortions/coro
 
 May 6, 2022 is the first date images after FGS refocusing were taken!!!
 
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 100 --propID  6627 --instrument 'nircam' --filetype _cal.fits 
+jwst_download.py -v --config jwst_query.cfg --lookbacktime 100 --propID  6627 --instrument 'fgs' --filetype _cal.fits 
+
 jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 4447 --instrument 'nircam' --filetype _cal.fits 
 jwst_download.py -v --config jwst_query.cfg --lookbacktime 1000 --propID 4447 --instrument 'fgs' --filetype _cal.fits 
 
@@ -265,3 +271,29 @@ from  jwst.lib.siafdb import SIAF, SiafDb
 from  jwst.lib.set_telescope_pointing import add_wcs
 
 /Users/arest/nircam/mirage/mirage/utils/set_telescope_pointing_separated.py
+
+---------------------
+
+v2/v3 tables for SIAF updates in 2023/2024:
+
+F210M/F335M:
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f335m/v1/mask_BAR_f335m.v1.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f335m/v1/mask_RND_f335m.v1.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A1-F210M-BAR-GAIA.v1.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A2-F210M-BAR-GAIA.v1.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A3-F210M-BAR-GAIA.v1.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A4-F210M-BAR-GAIA.v1.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A1-F210M-RND-GAIA.v2.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A2-F210M-RND-GAIA.v2.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A3-F210M-RND-GAIA.v2.progID_04447.mean.txt
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/masks_f210m/v1_hstgaia/JHAT-4447-A4-F210M-RND-GAIA.v2.progID_04447.mean.txt
+
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/f210mf335m/v2/f210mf335m_clear.v1.progID_all.mean.txt
+
+All filters CLEAR:
+/Users/arest/nircam/jwst_alignment_tools/v2v3results/all/v1/allfilters_clear.v1.progID_all.mean.txt
+
+----------------------
+
+
+

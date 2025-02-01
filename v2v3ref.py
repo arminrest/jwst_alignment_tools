@@ -39,6 +39,8 @@ class v2v3refclass(pdastroclass):
                          }
         if 'filter' in self.t.columns:
             self.param2col['filter']='filter'
+        if 'pupil' in self.t.columns:
+            self.param2col['pupil']='pupil'
         if 'progID' in self.t.columns:
             self.param2col['progID']='progID'
 
@@ -51,6 +53,8 @@ class v2v3refclass(pdastroclass):
                          }
         if 'filter' in self.t.columns:
             self.param2col['filter']='filter'
+        if 'pupil' in self.t.columns:
+            self.param2col['pupil']='pupil'
         if 'progID' in self.t.columns:
             self.param2col['progID']='filter'
         return(0)

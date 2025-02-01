@@ -525,7 +525,8 @@ class coeffs2asdf(pdastroclass):
             pass
         elif self.instrument=='NIRCAM':
             if sci_filter is None:
-                if self.subarr in ['FULL_WEDGE_RND','FULL_WEDGE_BAR']:
+                #if self.subarr in ['FULL_WEDGE_RND','FULL_WEDGE_BAR']:
+                if pupil in ['maskrnd','maskbar']:
                     if filt.upper() in self.metadata['imaging_filter']['NIRCAMMASK']:
                         sci_filter = self.metadata['imaging_filter']['NIRCAMMASK'][filt.upper()]
                 else:
@@ -589,6 +590,10 @@ class coeffs2asdf(pdastroclass):
         parity = aper_siaf.VIdlParity
 
         if siaf_filename is None:
+
+            if re.search('^mask',pupil) is not None:
+                raise RuntimeError(f'This image has pupil={pupil}, therefore cannot just use siaf V2/V3ref since it has a wedge in it!')
+
             V3IdlYAngle = aper_siaf.V3IdlYAngle
             V2Ref = aper_siaf.V2Ref
             V3Ref = aper_siaf.V3Ref
@@ -598,7 +603,9 @@ class coeffs2asdf(pdastroclass):
         else:
             v2v3ref = v2v3refclass()
             v2v3ref.load_v2v3ref(siaf_filename)
-            (V2Ref, V3Ref, V3IdlYAngle,ix) = v2v3ref.get_v2v3info(self.aperture) #,filtername=self.src_filter,pupilname=self.src_pupil)
+            v2v3ref.write()
+            print('fff',v2v3ref.t.columns)
+            (V2Ref, V3Ref, V3IdlYAngle,ix) = v2v3ref.get_v2v3info(self.aperture,pupilname=pupil) #,filtername=self.src_filter,pupilname=self.src_pupil)
             s = f'Getting (V2Ref, V3Ref, V3IdlYAngle) = ({V2Ref},{V3Ref},{V3IdlYAngle}) from {os.path.basename(siaf_filename)} for aperture {self.aperture.lower()}.'
             print(s)
             history.append(s)
