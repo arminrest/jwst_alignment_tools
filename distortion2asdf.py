@@ -605,6 +605,8 @@ class coeffs2asdf(pdastroclass):
             v2v3ref.load_v2v3ref(siaf_filename)
             v2v3ref.write()
             print('fff',v2v3ref.t.columns)
+            print(pupil)
+            print(self.aperture)
             (V2Ref, V3Ref, V3IdlYAngle,ix) = v2v3ref.get_v2v3info(self.aperture,pupilname=pupil) #,filtername=self.src_filter,pupilname=self.src_pupil)
             s = f'Getting (V2Ref, V3Ref, V3IdlYAngle) = ({V2Ref},{V3Ref},{V3IdlYAngle}) from {os.path.basename(siaf_filename)} for aperture {self.aperture.lower()}.'
             print(s)
@@ -683,9 +685,11 @@ class coeffs2asdf(pdastroclass):
 
         # Coronographic step
         if (self.fitsummary is not None) and ('y_transition' in self.fitsummary.t.columns) and isinstance(self.fitsummary.t.loc[0,'y_transition'],float):
+            ### CHANGE BACK!!!!!!
             y_transition = self.fitsummary.t.loc[0,'y_transition']
+            #y_transition = self.fitsummary.t.loc[0,'y_transition']-1023.5
             y_step_pixels = self.fitsummary.t.loc[0,'y_step_pixels']
-
+            print(f'#######\ny_transition: {y_transition}\ny_step_pixels:{y_step_pixels} ')
             # Insert a Box1D model here to account for the offset introduced by
             # the COM along the top of the detector. Shift the pixels in the COM region upwards
             # in y. No shift in x.
@@ -693,20 +697,23 @@ class coeffs2asdf(pdastroclass):
             # equal to twice 2047 minus the y coordinate of the transition.
             
             ysize = aper_siaf.YSciSize-1.0
-            
-            box_width = (ysize - y_transition) * 2
-            com_y = Box1D(amplitude=y_step_pixels, x_0=ysize, width=box_width)
-            com_x = Const1D(0)
-            com = Mapping([0, 1]) | com_x & com_y
 
-            inv_com_y = Box1D(amplitude=0. - y_step_pixels, x_0=ysize, width=box_width)
-            com.inverse = Mapping([0, 1]) | com_x & inv_com_y
+            box_width = (ysize + 1 - y_transition) * 2
+            com_y = yshift + Box1D(amplitude=y_step_pixels, x_0=ysize, width=box_width)
+            com_y.inverse = Box1D(amplitude=0. - y_step_pixels, x_0=ysize + 1 + yshift(0), width=box_width) + yshift.inverse 
 
-            # Now string the models together to make a single transformation
-            core_model = (sci2idl + com) | idl2v2v3
+            yshift = com_y
+
+
+            core_model = sci2idl | idl2v2v3
+
+
+            #yshift = Shift(-1023.5)
 
         else:
             core_model = sci2idl | idl2v2v3
+
+
 
         # Now add in the shifts to create the full model
         # including the shift to go from 0-indexed python coords to
@@ -715,8 +722,10 @@ class coeffs2asdf(pdastroclass):
         # SIAF coords
         index_shift = Shift(1)
 
-        # String together the pieces to create the final model
-        model = index_shift & index_shift | xshift & yshift | core_model | v2shift & v3shift
+        model = index_shift & index_shift | (xshift & yshift) | core_model | v2shift & v3shift
+
+
+
 
         # Since the inverse of all model components are now defined,
         # the total model inverse is also defined automatically
@@ -900,7 +909,9 @@ class coeffs2asdf(pdastroclass):
                                                               useafter=useafter)
 
         if outname is not None:
+            print('Saving',outname)
             distcoeff.save(outname)
+            #distcoeff.save('~/delme/vvv.asdf')
             print(f'Distortion coefficients saved to {outname}')
             if savemeta:
                 metaoutname = re.sub('\.asdf$','',outname)
@@ -935,7 +946,7 @@ if __name__ == '__main__':
         if re.search('\.txt$',filename) is not None:
             outname = re.sub('\.txt$','.asdf',filename)
         else:
-            outname = filename + '.asdf'
+            outname = filename +'' + '.asdf'
 
         # get the filter!
         m = re.search('_(f\d+[wmn2]+)_(\w+)\.polycoeff\.txt',filename.lower())
