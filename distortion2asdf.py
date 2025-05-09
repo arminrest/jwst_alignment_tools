@@ -273,9 +273,13 @@ class coeffs2asdf(pdastroclass):
             self.imtable.load(imtablefilename,verbose=2)
 
             fitsummaryfilename = re.sub('\.txt$','.fitsummary.txt',self.filename)
-            self.fitsummary = pdastroclass()
-            self.fitsummary.load(fitsummaryfilename,verbose=1)
-            self.fitsummary.write()
+            if os.path.isfile(fitsummaryfilename):
+                self.fitsummary = pdastroclass()
+                self.fitsummary.load(fitsummaryfilename,verbose=1)
+                self.fitsummary.write()
+            else:
+                self.fitsummary = None
+                
 
         else:
             self.imtable = None
