@@ -84,6 +84,8 @@ class fpa2fpa_alignmentclass(pdastroclass):
         
         self.dy = 0.02 # difference in pixel to go into +- y-direction in the center for calculating the angle
 
+        self.v2v3ref = v2v3refclass()
+
         self.clear()
         
     def clear(self):
@@ -129,7 +131,12 @@ class fpa2fpa_alignmentclass(pdastroclass):
             parser = argparse.ArgumentParser(usage=usage,conflict_handler=conflict_handler)
 
         parser.add_argument('--siaf_file', default=None, help='pass the siaf file for the nominal SRC V2/V3ref info for the source image. This can be a standard xml file or one of the siaf txt files. If None, then the V2/V3ref info is determined using the siaf aperture python module')
-        parser.add_argument('--v2v3refvalues', type=float, nargs=3, default=None, help='pass the desired, nominal V2ref, V3ref, and V3IdlYAngle for the source image. This supercedes --siaf_file')
+        parser.add_argument('--v2v3refvalues', type=float, nargs=3, default=None, help='pass the desired, nominal V2ref, V3ref, and V3IdlYAngle for the source image. This sets --v2v3ref_type_src automatically to manual')
+        parser.add_argument('--v2v3ref_type_src', choices=['aperture', 'table', 'manual', 'table_aperture'], default='aperture', help='Define how to get the v2v3ref info: \n'
+                            '"aperture": from siaf aperture;'
+                            '"table": from table, which can be loaded with --siaf_file;'
+                            '"manual":passed, for example with --v2v3ref_type_src;'
+                            '"table_aperture": first choice is table, if not available use aperture; (default: %(default)s)')
 
         parser.add_argument('-v','--verbose', default=0, action='count')
 
@@ -255,6 +262,66 @@ class fpa2fpa_alignmentclass(pdastroclass):
 
         return(0)
     
+    def get_v2v3refinfo_src(self, v2v3ref_type_src='aperture', v2v3refvalues=None):
+        """
+        Get the desired, nominal V2ref,V3ref,V3IdlYAngle for the source image.
+        
+
+        Parameters
+        ----------
+        v2v3ref_type_src : String, optional
+            Choice of:
+            "aperture": from siaf aperture
+            "table": from table, which can be loaded with --siaf_file
+            "manual":passed, for example with --v2v3ref_type_src
+            "table_aperture": first choice is table, if not available use aperture
+            The default is 'aperture'.
+        v2v3refvalues : (v2ref,v3ref,V3IdlYAngle), optional
+            manual values. If None, sets v2v3ref_type_src automatically to manual. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        if v2v3refvalues is not None:
+            (self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle)=v2v3refvalues
+        else:
+            if v2v3ref_type_src in ['table_aperture','table']:
+                try:
+                    if self.verbose>0:
+                        print('Using v2v3ref info table for nominal v2/v3ref info')
+                    
+                    (self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle,ix)=self.v2v3ref.get_v2v3info(self.src_aperture.AperName,filtername=self.src_filter,pupilname=self.src_pupil)
+                except BaseException as error:
+                    if v2v3ref_type_src == 'table_aperture':
+                        print('WARNING: could not get v2v3ref from table with error: {}'.format(error))
+                        print(f'Getting v2v3ref info from siaf aperture since v2v3ref_type_src == {v2v3ref_type_src}')
+                        if self.verbose>0:
+                            print(f'Using SRC siaf aperture {self.src_aperture.AperName} for nominal v2/v3ref info')
+                        self.src_nominal_V2ref = self.src_aperture.V2Ref
+                        self.src_nominal_V3ref = self.src_aperture.V3Ref
+                        self.src_nominal_V3IdlYAngle = self.src_aperture.V3IdlYAngle
+                    else:
+                        raise RuntimeError('could not get v2v3ref from table with error: {}'.format(error))
+            elif v2v3ref_type_src == 'aperture':
+                if self.verbose>0:
+                    print(f'Using SRC siaf aperture {self.src_aperture.AperName} for nominal v2/v3ref info')
+                self.src_nominal_V2ref = self.src_aperture.V2Ref
+                self.src_nominal_V3ref = self.src_aperture.V3Ref
+                self.src_nominal_V3IdlYAngle = self.src_aperture.V3IdlYAngle
+            elif v2v3ref_type_src == 'manual':
+                raise RuntimeError(f'v2v3ref_type_src == {v2v3ref_type_src}, but no v2v3refvalues passed!')
+            else:
+                raise RuntimeError(f'v2v3ref_type_src == {v2v3ref_type_src} not supported')
+
+        print('BBBB',self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle)  
+        sys.exit(0)              
+                        
+            
+            
+        
     def get_nominal_v2v3info(self,siaf_file = None, v2v3refvalues=None):
         """
         Get the desired, nominal V2ref,V3ref,V3IdlYAngle for the source image.
@@ -545,7 +612,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
 
         return(self.new_trg_V2ref,self.new_trg_V3ref,self.new_trg_V3IdlYAngle)
     
-    def calc_trg_v2v3info(self,srcfilename,trgfilename,siaf_file=None,v2v3refvalues=None):
+    def calc_trg_v2v3info(self,srcfilename,trgfilename,v2v3ref_type_src='aperture',v2v3refvalues=None):
         
         ###
         ### initialize source and target images and apertures
@@ -554,10 +621,10 @@ class fpa2fpa_alignmentclass(pdastroclass):
         # first initialise the source
         self.initialize_src(srcfilename)
         # set the source V2/V3ref and V3IdlYAngle
-        # if no siaf_file is passed, then the V2V3info is taken from the siaf aperture.
-        # siaf_file can be a siaf xml file of one of the siaf text files in the format from this package
-        # note: if the v2v3info is read in from a siaf text file, then it will get it for the source filter and pupil!!!
-        self.get_nominal_v2v3info(siaf_file = siaf_file, v2v3refvalues=v2v3refvalues)
+        #self.get_nominal_v2v3info(siaf_file = siaf_file, v2v3refvalues=v2v3refvalues)
+        self.get_v2v3refinfo_src(v2v3ref_type_src=v2v3ref_type_src,v2v3refvalues=v2v3refvalues)
+        
+        
         # initialize the target
         self.initialize_trg(trgfilename)
         
@@ -609,8 +676,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     fpa2fpa.verbose=args.verbose
+    
+    if args.siaf_file is not None:
+        fpa2fpa.v2v3ref.load_v2v3ref(args.siaf_file)
+        
 
     fpa2fpa.calc_trg_v2v3info(args.srcfilename,
                               args.trgfilename,
-                              args.siaf_file,
-                              args.v2v3refvalues)
+                              v2v3ref_type_src = args.v2v3ref_type_src,
+                              v2v3refvalues = args.v2v3refvalues)

@@ -176,32 +176,34 @@ class pdastroclass:
             s+=' %s' % cmphdr['COLTBL%d' % i]
         s = re.sub('Xpos','X',s)
         s = re.sub('Ypos','Y',s)
-        print(s)
         lines = open(filename,'r').readlines()
         lines[0]=s
         errorflag = self.load_spacesep(io.StringIO('\n'.join(lines)))
         return(errorflag,cmphdr)
         
     def load_spacesep(self,filename,test4commentedheader=True,namesMapping=None,roundingMapping=None,
-                      hexcols=None,auto_find_hexcols=True, delim_whitespace=True,
+                      hexcols=None,auto_find_hexcols=True, sep='\s+',
                       na_values=['None','-','--'],verbose=False,**kwargs):
         
         #kwargs['delim_whitespace']=True
 
         #also test for commented header to make it compatible to old format.
         self.load(filename,na_values=na_values,test4commentedheader=test4commentedheader,
-                  namesMapping=namesMapping,roundingMapping=roundingMapping,delim_whitespace=delim_whitespace,
+                  namesMapping=namesMapping,roundingMapping=roundingMapping,sep=sep,
                   hexcols=hexcols,auto_find_hexcols=auto_find_hexcols,verbose=verbose,**kwargs)
 
         return(0)
 
     def load(self,filename,raiseError=True,test4commentedheader=False,namesMapping=None,roundingMapping=None,
-             hexcols=None,auto_find_hexcols=True,verbose=False,delim_whitespace=True,**kwargs):
+             hexcols=None,auto_find_hexcols=True,verbose=False,sep='\s+',check4csv=True,**kwargs):
         #self.t = ascii.read(filename,format='commented_header',delimiter='\s',fill_values=[('-',0),('--',0)])
 
         try:
             if verbose: print('Loading %s' % filename)
-            self.t = pd.read_table(filename,delim_whitespace=delim_whitespace,**kwargs)
+            if check4csv and re.search('csv$',filename):    
+                self.t = pd.read_csv(filename,sep=sep,comment='#',**kwargs)
+            else:
+                self.t = pd.read_table(filename,sep=sep,**kwargs)
             self.filename = filename
         except Exception as e:
             print('ERROR: could not read %s!' % filename)
@@ -505,6 +507,7 @@ class pdastroclass:
         colnames=self.getcolnames(colnames)
         #print(colnames)
         for colname in colnames:
+            print(colname,uplim)
             if not(lowlim is None):
                 if exclude_lowlim:
                     (keep,) = np.where(self.t.loc[indices,colname].gt(lowlim))
@@ -601,15 +604,6 @@ class pdastroclass:
 
         return(ix_sorted)
 
-    def replace_regex(self,col,destcol,regex,substitution,indices=None):
-        # get the indices based on input.
-        indices=self.getindices(indices)  
-        
-        self.t.loc[indices,destcol]  = self.t.loc[indices,col].str.replace(regex,substitution,regex=True)
-        #self.imtable.t.loc[indices,destcol] = replace_results[0].values
-    
-        return(indices)    
-
     def newrow(self,dicti=None):
         #self.t = self.t.append(dicti,ignore_index=True)
         self.t = pd.concat([self.t,pd.DataFrame([dicti])],axis=0, ignore_index=True)
@@ -650,18 +644,9 @@ class pdastroclass:
         for index in indices:
             #header = fits.getheader(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname)
             # It was impossible to use 'verify' with getheader... 
-            #hdu = fits.open(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname,output_verify="silentfix")
-            hdu = fits.open(self.t.loc[index,fitsfilecolname],output_verify="silentfix")
+            hdu = fits.open(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname,output_verify="silentfix")
             if verify is not None: hdu.verify(verify)
-            
-            # get the appropriate extension
-            if ext is not None:
-                header = hdu[ext].header
-            elif extname is not None:
-                header = hdu[extname].header
-            else:
-                header = hdu[0].header
-                
+            header = hdu[0].header
             if headercol!=None:
                 self.t[headercol]=header
                 
@@ -1244,8 +1229,6 @@ class pdastrostatsclass(pdastroclass):
         else:
             self.statparams['Nnan']= 0
             
-
-
         while ((self.statparams['i']<Nitmax) or (Nitmax==0)) and (not self.statparams['converged']):
             # median only in first iteration and if wanted
             medianflag = median_firstiteration and (self.statparams['i']==0) and (Nsigma!=None)
@@ -1277,7 +1260,8 @@ class pdastrostatsclass(pdastroclass):
                 self.statparams['converged']=False
                 break
             # Only do a sigma cut if wanted
-            if Nsigma == None or Nsigma == 0.0:
+            if Nsigma is None or Nsigma == 0.0:
+                if verbose: print('no iteration, exiting...')
                 self.statparams['converged']=True
                 break
             # No changes anymore? If yes converged!!!
@@ -1346,12 +1330,11 @@ class pdastrostatsclass(pdastroclass):
                 else:
                     self.default_formatters[outcol]=format4outvals.format
             
-            if setcol2None or not(outcol in self.t.columns):
+            if setcol2None:
                 if param in ['mean','mean_err','stdev','stdev_err','X2norm']:
                     self.t[outcol]=np.nan
                 else:
                     self.t[outcol]=None
-                    
                     
             
         return(set(zip(outparams,outcols)))

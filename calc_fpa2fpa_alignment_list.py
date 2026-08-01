@@ -50,7 +50,7 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
         self.showplots = 0
         self.saveplots = 0
         
-        self.imtable = pdastroclass(columns=['imID','progID','obs','visit','group','parallel','fullimage'])
+        self.imtable = pdastroclass(columns=['imID','progID','obs','visit','group','parallel','setID','fullimage'])
 
         # plot style for residual plots
         self.plot_style={}
@@ -110,23 +110,6 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
         #sys.exit(0)
         
         for ix in ixs:   
-            """
-            hdr0 = fits.getheader(self.imtable.t.loc[ix,'fullimage'])
-            hdr1 = fits.getheader(self.imtable.t.loc[ix,'fullimage'],ext=1)
-            self.imtable.t.loc[ix,['instrument','apername']]=[hdr0["INSTRUME"].lower(),hdr0["APERNAME"].lower()]
-            if "FILTER" in hdr0: 
-                self.imtable.t.loc[ix,'filter']=hdr0["FILTER"].lower()
-            else:
-                self.imtable.t.loc[ix,'filter']=None
-            if "PUPIL" in hdr0: 
-                self.imtable.t.loc[ix,'pupil']=hdr0["PUPIL"].lower()
-            else:
-                self.imtable.t.loc[ix,'pupil']=None
-            if "V2_REF" in hdr1: 
-                self.imtable.t.loc[ix,['V2_REF','V3_REF','V3I_YANG']]=[float(hdr1["V2_REF"]),float(hdr1["V3_REF"]),float(hdr1["V3I_YANG"])]
-            else:
-                self.imtable.t.loc[ix,['V2_REF','V3_REF','V3I_YANG']]=[np.nan,np.nan,np.nan]
-            """
             shortname = os.path.basename(self.imtable.t.loc[ix,'fullimage'])
             
             #m = re.search('^jw(\d\d\d\d\d)()',shortname)
@@ -145,7 +128,8 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
             #self.imtable.t.loc[ix,'progID']=progID
 
         # Make sure the type and formatting are all good
-        for col in ['imID','progID','obs','visit','group','parallel']:
+        self.imtable.t['setID']=-1
+        for col in ['imID','progID','obs','visit','group','parallel','setID']:
             self.imtable.t[col]=self.imtable.t[col].astype('int')
 
     def get_inputfiles_imtable(self, filepatterns, directory=None, progIDs=None):
@@ -233,6 +217,35 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
             self.imtable.write(indices=ixs_return)
         return(ixs_return)
 
+    def select_imagesets(self, ixs_im = None, setID=0, setIDcolname='setID'):
+        ixs_im = self.imtable.getindices(ixs_im)
+        
+        progIDs = sorted(unique(self.imtable.t.loc[ixs_im,'progID']))
+        for progID in progIDs:
+            ixs_progID = self.imtable.ix_equal('progID',progID, indices=ixs_im)
+            obsIDs = sorted(unique(self.imtable.t.loc[ixs_progID,'obs']))
+            #print('vvv',obsIDs)
+            
+            for obsID in  obsIDs:
+                ixs_obsID = self.imtable.ix_equal('obs',obsID, indices=ixs_progID)
+                visitIDs = sorted(unique(self.imtable.t.loc[ixs_obsID,'visit']))
+                #print('vvv',visitIDs)
+                
+                for visitID in  visitIDs:
+                    ixs_visitID = self.imtable.ix_equal('visit',visitID, indices=ixs_obsID)
+                    groupIDs = sorted(unique(self.imtable.t.loc[ixs_visitID,'group']))
+                    #print('vvv',groupIDs)
+                    
+                    for groupID in groupIDs:
+                        #print('',progID,obsID,visitID,groupID)
+                        ixs_groupID = self.imtable.ix_equal('group',groupID, indices=ixs_visitID)
+                        if self.verbose>1:
+                            print(f'### Set {setID}: {len(ixs_groupID)} entries for progID={progID} obsID={obsID} visitID={visitID} groupID={groupID}')
+                        if self.verbose>2:
+                            self.imtable.write(indices=ixs_groupID)
+                        self.imtable.t.loc[ixs_groupID,setIDcolname]=setID
+                        setID+=1
+        #self.imtable.write()
 
         
 if __name__ == '__main__':
@@ -251,14 +264,16 @@ if __name__ == '__main__':
     fpa2fpa_list.showplots=args.showplots
     fpa2fpa_list.saveplots=args.saveplots
     
-    # get all the files
+    # get all the images
     fpa2fpa_list.get_inputfiles_imtable(args.input_filepatterns,
                                         directory=args.input_dir,
                                         progIDs=args.progIDs)
     
+    # select the images for the calculation
     ixs_im = fpa2fpa_list.select_images(apertures=args.apertures, filters=args.filters, pupils=args.pupils)
 
-
+    image_groups = fpa2fpa_list.select_imagesets(ixs_im=ixs_im)
+    
 
     sys.exit(0)
     
