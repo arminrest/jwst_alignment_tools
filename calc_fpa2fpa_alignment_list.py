@@ -87,7 +87,7 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
 
     def get_inputfiles_info(self):
         """
-        Populate the self.imtable with the relevant fits keywords 
+        Populate the self.imtable with the relevant fits keywords. Parse the filename for progID, obs, visit, group numbers 
 
         Returns
         -------
@@ -97,7 +97,8 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
         ixs = self.imtable.getindices()
 
         self.imtable.fitsheader2table('fullimage',requiredfitskeys=['INSTRUME','DETECTOR','APERNAME','FILTER','PUPIL','DATE-OBS','TIME-OBS'])
-        self.imtable.fitsheader2table('fullimage',requiredfitskeys=['V2_REF','V3_REF','V3I_YANG'],ext=1)
+        #print('\n###################################\n')
+        self.imtable.fitsheader2table('fullimage',requiredfitskeys=['V2_REF','V3_REF','V3I_YANG'],extname='SCI')
 
         # Convert fits keyword columns to lower case, including column names
         renamedict={}
@@ -247,6 +248,38 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
                         setID+=1
         #self.imtable.write()
 
+    def calc_trgs_v2v3info(self, setIDs=None, setIDcolname='setID', v2v3ref_type_src=None, v2v3refvalues=None):
+        if self.verbose>=2:
+            print('#########################\n### image table with set IDs:')
+            self.imtable.write()
+        if setIDs is None:
+            setIDs = sorted(unique(self.imtable.t[setIDcolname]))
+        if self.verbose>=2:
+            print('# selected set IDs: {setIDs}')
+        for setID in setIDs:
+            ixs_setID = self.imtable.ix_equal(setIDcolname,setID)
+            if self.verbose>=2:
+                print(f'\n### setID {setID}, {len(ixs_setID)} entries: {ixs_setID}')
+            if self.verbose>=3:
+                self.imtable.write(indices=ixs_setID)
+            for (counter_src,ix_src) in enumerate(ixs_setID):
+                for (counter_trg,ix_trg) in enumerate(ixs_setID[counter_src+1:]):
+                    if self.verbose>=2:
+                        print(f'Matched pair: imID=[{self.imtable.t.loc[ix_src,"imID"]},{self.imtable.t.loc[ix_trg,"imID"]}], detectors=[{self.imtable.t.loc[ix_src,"detector"]},{self.imtable.t.loc[ix_trg,"detector"]}]')
+                    if self.verbose>=3:
+                        self.imtable.write(indices=[ix_src,ix_trg])
+
+                    (new_trg_V2ref,new_trg_V3ref,new_trg_V3IdlYAngle) = self.calc_trg_v2v3info(self.imtable.t.loc[ix_src,"fullimage"],
+                                                                                               self.imtable.t.loc[ix_trg,"fullimage"],
+                                                                                               v2v3ref_type_src = v2v3ref_type_src,
+                                                                                               v2v3refvalues = v2v3refvalues)
+                    #print(f'V2ref=({self.imtable.t.loc[ix_trg,"V2_REF"]:.4f},{new_trg_V2ref:.4f})')
+                    #print(f'V3ref=({self.imtable.t.loc[ix_trg,"V3_REF"]:.4f},{new_trg_V3ref:.4f})')
+                    #print(f'V3IdlYAngle=({self.imtable.t.loc[ix_trg,"V3I_YANG"]:.6f},{new_trg_V3IdlYAngle:.6f})')
+                    if counter_trg>=0:
+                        sys.exit(0)
+        print(self.verbose,'FFFFFF')
+
         
 if __name__ == '__main__':
     
@@ -274,6 +307,7 @@ if __name__ == '__main__':
 
     image_groups = fpa2fpa_list.select_imagesets(ixs_im=ixs_im)
     
+    fpa2fpa_list.calc_trgs_v2v3info(v2v3ref_type_src=args.v2v3ref_type_src, v2v3refvalues=args.v2v3refvalues)
 
     sys.exit(0)
     

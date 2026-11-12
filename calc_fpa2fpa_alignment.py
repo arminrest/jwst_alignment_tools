@@ -113,6 +113,8 @@ class fpa2fpa_alignmentclass(pdastroclass):
         self.trg_filter = None
         self.trg_pupil = None
         
+        self.src_V3IdlYAngle_image = None
+        
         self.src_nominal_V2ref = None
         self.src_nominal_V3ref = None
         self.src_nominal_V3IdlYAngle = None
@@ -135,7 +137,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
         parser.add_argument('--v2v3ref_type_src', choices=['aperture', 'table', 'manual', 'table_aperture'], default='aperture', help='Define how to get the v2v3ref info: \n'
                             '"aperture": from siaf aperture;'
                             '"table": from table, which can be loaded with --siaf_file;'
-                            '"manual":passed, for example with --v2v3ref_type_src;'
+                            '"manual":passed, for example with --v2v3refvalues;'
                             '"table_aperture": first choice is table, if not available use aperture; (default: %(default)s)')
 
         parser.add_argument('-v','--verbose', default=0, action='count')
@@ -262,7 +264,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
 
         return(0)
     
-    def get_v2v3refinfo_src(self, v2v3ref_type_src='aperture', v2v3refvalues=None):
+    def get_nominal_v2v3refinfo_src(self, v2v3ref_type_src='aperture', v2v3refvalues=None):
         """
         Get the desired, nominal V2ref,V3ref,V3IdlYAngle for the source image.
         
@@ -316,8 +318,9 @@ class fpa2fpa_alignmentclass(pdastroclass):
             else:
                 raise RuntimeError(f'v2v3ref_type_src == {v2v3ref_type_src} not supported')
 
-        print('BBBB',self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle)  
-        sys.exit(0)              
+        if self.verbose:
+            print(f'NOMINAL v2v3ref values for source {self.src_aperture.AperName} filter={self.src_filter} pupil={self.src_pupil}')
+            print(f'(V2Ref,V3Ref,V3IdlYAngle)=({self.src_nominal_V2ref},{self.src_nominal_V3ref},{self.src_nominal_V3IdlYAngle})')
                         
             
             
@@ -556,17 +559,20 @@ class fpa2fpa_alignmentclass(pdastroclass):
             print('\n### rotate and shift the values in the v2 and v3 columns so that they agree with the nominal V2ref, V3ref, and V3IdlYAngle of the source')
 
 
-        src_V3IdlYAngle = calc_V3IdlYAngle(self.t.loc[src_ixs[1],'v2'],self.t.loc[src_ixs[1],'v3'],
+        self.src_V3IdlYAngle_image = calc_V3IdlYAngle(self.t.loc[src_ixs[1],'v2'],self.t.loc[src_ixs[1],'v3'],
                                            self.t.loc[src_ixs[2],'v2'],self.t.loc[src_ixs[2],'v3'])
+        
 
         R = Rotation2D()
         # calculate the differences in v2/v3 with respect to the center pixel v2/v3
         v2diff=np.array(self.t['v2']-self.t.loc[src_ixs[0],'v2'])
         v3diff=np.array(self.t['v3']-self.t.loc[src_ixs[0],'v3'])
+        #print('v2v3diff',v2diff,v3diff)
         # calculate the correction angle between the true src_V3IdlYAngle and the nominal one
-        angle = src_V3IdlYAngle-self.src_nominal_V3IdlYAngle
+        angle = self.src_V3IdlYAngle_image-self.src_nominal_V3IdlYAngle
         # Rotate the v2/v3 values, and add the ***nominal*** v2/v3 values
         (v2diffrot,v3diffrot) = R.evaluate(v2diff,v3diff,angle*u.deg)
+        #print('v2v3diffrot',v2diffrot,v3diffrot)
         self.t['v2rot']=v2diffrot+self.src_nominal_V2ref
         self.t['v3rot']=v3diffrot+self.src_nominal_V3ref
         if self.verbose:
@@ -576,7 +582,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
                                                self.t.loc[src_ixs[2],'v2rot'],self.t.loc[src_ixs[2],'v3rot'])
 #            self.t.loc[src_ixs[2],'v2rot']-self.t.loc[src_ixs[1],'v2rot'], 
 #                                               self.t.loc[src_ixs[2],'v3rot']-self.t.loc[src_ixs[1],'v3rot'])
-        if self.verbose: print(f'SRC rotated V3YIdlangle {src_V3IdlYAngle_rot:.8f} from {src_V3IdlYAngle:.8f} (nominal: {self.src_nominal_V3IdlYAngle:.8f}, siaf: {self.src_aperture.V3IdlYAngle:.8f})')
+        if self.verbose: print(f'SRC rotated V3YIdlangle {src_V3IdlYAngle_rot:.8f} from {self.src_V3IdlYAngle_image:.8f} (nominal: {self.src_nominal_V3IdlYAngle:.8f}, siaf: {self.src_aperture.V3IdlYAngle:.8f})')
 
         # error checking: did the rotation and offset work, i.e., are the 3 v2v3 positions now consistent with the desired nominal v2ref, v3ref and V3IdlYAngle?
         tolerance = 0.0000001
@@ -595,12 +601,27 @@ class fpa2fpa_alignmentclass(pdastroclass):
             print(f'All differences within tolerance of {tolerance}!!!')
         return(0)        
 
-    def calc_new_v2v3info(self,src_ixs,trg_ixs):
+    def calc_new_v2v3info(self,src_ixs,trg_ixs,use_rotated=True):
+        if use_rotated:
+            v2col = 'v2rot'
+            v3col = 'v3rot'
+        else:
+            v2col = 'v2'
+            v3col = 'v3'
+            
 
+        self.new_trg_V3IdlYAngle = calc_V3IdlYAngle(self.t.loc[trg_ixs[1],v2col],self.t.loc[trg_ixs[1],v3col],
+                                                    self.t.loc[trg_ixs[2],v2col],self.t.loc[trg_ixs[2],v3col])
+        self.new_trg_V2ref = self.t.loc[trg_ixs[0],v2col]
+        self.new_trg_V3ref = self.t.loc[trg_ixs[0],v3col]
+
+        """
         self.new_trg_V3IdlYAngle = calc_V3IdlYAngle(self.t.loc[trg_ixs[1],'v2rot'],self.t.loc[trg_ixs[1],'v3rot'],
-                                                                      self.t.loc[trg_ixs[2],'v2rot'],self.t.loc[trg_ixs[2],'v3rot'])
+                                                    self.t.loc[trg_ixs[2],'v2rot'],self.t.loc[trg_ixs[2],'v3rot'])
         self.new_trg_V2ref = self.t.loc[trg_ixs[0],"v2rot"]
         self.new_trg_V3ref = self.t.loc[trg_ixs[0],"v3rot"]
+        """
+
         
         if self.verbose:
             print('\n######\n###### Results:\n######')
@@ -612,23 +633,26 @@ class fpa2fpa_alignmentclass(pdastroclass):
 
         return(self.new_trg_V2ref,self.new_trg_V3ref,self.new_trg_V3IdlYAngle)
     
-    def calc_trg_v2v3info(self,srcfilename,trgfilename,v2v3ref_type_src='aperture',v2v3refvalues=None):
+    def calc_trg_v2v3info(self,srcfilename,trgfilename,v2v3ref_type_src='aperture',v2v3refvalues=None,clean_table=True):
         
         ###
         ### initialize source and target images and apertures
         ###
         
+        if clean_table:
+            self.t = pd.DataFrame(columns=self.t.columns)
+
+
         # first initialise the source
         self.initialize_src(srcfilename)
+        
         # set the source V2/V3ref and V3IdlYAngle
         #self.get_nominal_v2v3info(siaf_file = siaf_file, v2v3refvalues=v2v3refvalues)
-        self.get_v2v3refinfo_src(v2v3ref_type_src=v2v3ref_type_src,v2v3refvalues=v2v3refvalues)
+        self.get_nominal_v2v3refinfo_src(v2v3ref_type_src=v2v3ref_type_src,v2v3refvalues=v2v3refvalues)
         
         
         # initialize the target
         self.initialize_trg(trgfilename)
-        
-        
         
         ###
         ### Calculate the v2/v3 positions, and derive v2v3info for target
@@ -647,7 +671,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
         
         # now calculate the 3 v2/v3 positions for the target *** in the source v2/v3 system ***
         self.trg_ixs = self.calc_trg_v2v3info_in_src_system()
-        
+
         # Now rotate the v2/v3 position so that the source image v2/v3 system 
         # agrees with the desired nominal v2/v3ref and V3IdlYAngle specified in 
         # self.src_nominal_V2ref
@@ -660,7 +684,16 @@ class fpa2fpa_alignmentclass(pdastroclass):
         # self.new_trg_V2ref
         # self.new_trg_V3ref
         # self.new_trg_V3IdlYAngle
+
         (new_trg_V2ref,new_trg_V3ref,new_trg_V3IdlYAngle) = self.calc_new_v2v3info(self.src_ixs,self.trg_ixs)
+
+        ### TEST: the difference in V3IdlYAngle between target and source is independent of rotation!!! 
+        #print(f'{self.src_nominal_V3IdlYAngle:.8f} {new_trg_V3IdlYAngle:.8f} diff: {self.src_nominal_V3IdlYAngle-new_trg_V3IdlYAngle:.8f}')
+        #(new_trg_V2ref,new_trg_V3ref,new_trg_V3IdlYAngle) = self.calc_new_v2v3info(self.src_ixs,self.trg_ixs,use_rotated=False)
+        #print(f'{self.src_V3IdlYAngle_image:.8f} {new_trg_V3IdlYAngle:.8f} diff: {self.src_V3IdlYAngle_image-new_trg_V3IdlYAngle:.8f}')
+       
+        angle = self.src_V3IdlYAngle_image-self.src_nominal_V3IdlYAngle
+
         
         return(new_trg_V2ref,new_trg_V3ref,new_trg_V3IdlYAngle)
 
@@ -679,6 +712,13 @@ if __name__ == '__main__':
     
     if args.siaf_file is not None:
         fpa2fpa.v2v3ref.load_v2v3ref(args.siaf_file)
+        #outfilename = args.siaf_file+'.tmp'
+        #fpa2fpa.v2v3ref.t['pupil']='clear'
+        #cols='aperture filter pupil progID  V3IdlYAngle_mean  V3IdlYAngle_mean_err  V3IdlYAngle_stdev  V3IdlYAngle_Ngood  V3IdlYAngle_Nclip  V2ref_mean  V2ref_mean_err  V2ref_stdev  V2ref_Ngood  V2ref_Nclip  V3ref_mean  V3ref_mean_err  V3ref_stdev  V3ref_Ngood  V3ref_Nclip'.split()
+        #print(outfilename,cols)
+        #fpa2fpa.v2v3ref.write(outfilename,columns=cols)
+        #sys.exit(0)
+        
         
 
     fpa2fpa.calc_trg_v2v3info(args.srcfilename,

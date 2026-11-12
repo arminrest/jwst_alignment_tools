@@ -77,12 +77,15 @@ class v2v3refclass(pdastroclass):
             
     
     def load_v2v3ref(self,filename,**kwargs):
+        print(f'VBFNVBNVBNVBNVBNVBNVB0 {self.filename}')
         if re.search('\.xml$',filename) is not None:
             self.load_xml(filename,**kwargs)
         elif re.search('\.txt$',filename) is not None:            
             self.load_txt(filename,**kwargs)
         else:
             raise RuntimeError(f'cannot load file {filename}, only xml and txt files are allowed!')
+        print(f'VBFNVBNVBNVBNVBNVBNVB1 {self.filename}')
+
         return(0)
     
     def define_options(self,parser=None,usage=None,conflict_handler='resolve'):

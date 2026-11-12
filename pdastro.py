@@ -644,9 +644,24 @@ class pdastroclass:
         for index in indices:
             #header = fits.getheader(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname)
             # It was impossible to use 'verify' with getheader... 
+            hdu = fits.open(self.t.loc[index,fitsfilecolname],output_verify="silentfix")
+            print(hdu.info())
+            if ext is not None:
+                header = hdu[ext].header
+            elif extname is not None:
+                header = hdu[extname].header
+            else:
+                header = hdu[0].header
+                
+            #print(hdu[1].header)
+            #sys.exit(0)
+            
+            """
             hdu = fits.open(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname,output_verify="silentfix")
             if verify is not None: hdu.verify(verify)
-            header = hdu[0].header
+            header0 = hdu[0].header
+            """
+            
             if headercol!=None:
                 self.t[headercol]=header
                 
@@ -672,6 +687,7 @@ class pdastroclass:
                         self.t.loc[index,col]=header[fitskey]
                     else:
                         self.t.loc[index,col]=None
+            hdu.close()
 
     def dateobs2mjd(self,dateobscol,mjdcol,timeobscol=None,indices=None,tformat='isot'):
         indices = self.getindices(indices)  
