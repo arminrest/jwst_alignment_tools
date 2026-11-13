@@ -114,7 +114,7 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
             shortname = os.path.basename(self.imtable.t.loc[ix,'fullimage'])
             
             #m = re.search('^jw(\d\d\d\d\d)()',shortname)
-            m = re.search('^jw(\d{5})(\d{3})(\d{3})_(\d{2})(\d{1})(\d{2})',shortname)
+            m = re.search(r'^jw(\d{5})(\d{3})(\d{3})_(\d{2})(\d{1})(\d{2})',shortname)
             if m is not None:
                 info = list(m.groups())
                 for i in range(5):
@@ -265,7 +265,7 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
             for (counter_src,ix_src) in enumerate(ixs_setID):
                 for (counter_trg,ix_trg) in enumerate(ixs_setID[counter_src+1:]):
                     if self.verbose>=2:
-                        print(f'Matched pair: imID=[{self.imtable.t.loc[ix_src,"imID"]},{self.imtable.t.loc[ix_trg,"imID"]}], detectors=[{self.imtable.t.loc[ix_src,"detector"]},{self.imtable.t.loc[ix_trg,"detector"]}]')
+                        print(f'\n######\n###### Matched pair: imID=[{self.imtable.t.loc[ix_src,"imID"]},{self.imtable.t.loc[ix_trg,"imID"]}], detectors=[{self.imtable.t.loc[ix_src,"detector"]},{self.imtable.t.loc[ix_trg,"detector"]}]\n######')
                     if self.verbose>=3:
                         self.imtable.write(indices=[ix_src,ix_trg])
 
@@ -276,7 +276,7 @@ class fpa2fpa_alignment_list_class(fpa2fpa_alignmentclass):
                     #print(f'V2ref=({self.imtable.t.loc[ix_trg,"V2_REF"]:.4f},{new_trg_V2ref:.4f})')
                     #print(f'V3ref=({self.imtable.t.loc[ix_trg,"V3_REF"]:.4f},{new_trg_V3ref:.4f})')
                     #print(f'V3IdlYAngle=({self.imtable.t.loc[ix_trg,"V3I_YANG"]:.6f},{new_trg_V3IdlYAngle:.6f})')
-                    if counter_trg>=0:
+                    if counter_trg>=1:
                         sys.exit(0)
         print(self.verbose,'FFFFFF')
 
@@ -297,6 +297,10 @@ if __name__ == '__main__':
     fpa2fpa_list.showplots=args.showplots
     fpa2fpa_list.saveplots=args.saveplots
     
+    print('bbb',args.siaf_file)
+    if args.siaf_file is not None:
+        fpa2fpa_list.v2v3ref.load_v2v3ref(args.siaf_file)
+
     # get all the images
     fpa2fpa_list.get_inputfiles_imtable(args.input_filepatterns,
                                         directory=args.input_dir,

@@ -151,7 +151,7 @@ class pdastroclass:
         self.spline={}
 
 
-    def load_lines(self,lines,sep='\s+',**kwargs):
+    def load_lines(self,lines,sep=r'\s+',**kwargs):
         #errorflag = self.load_spacesep(io.StringIO('\n'.join(lines)),sep=sep,**kwargs)
         errorflag = self.load_spacesep(io.StringIO('\n'.join(lines)),**kwargs)
         return(errorflag)
@@ -182,7 +182,7 @@ class pdastroclass:
         return(errorflag,cmphdr)
         
     def load_spacesep(self,filename,test4commentedheader=True,namesMapping=None,roundingMapping=None,
-                      hexcols=None,auto_find_hexcols=True, sep='\s+',
+                      hexcols=None,auto_find_hexcols=True, sep=r'\s+',
                       na_values=['None','-','--'],verbose=False,**kwargs):
         
         #kwargs['delim_whitespace']=True
@@ -195,7 +195,7 @@ class pdastroclass:
         return(0)
 
     def load(self,filename,raiseError=True,test4commentedheader=False,namesMapping=None,roundingMapping=None,
-             hexcols=None,auto_find_hexcols=True,verbose=False,sep='\s+',check4csv=True,**kwargs):
+             hexcols=None,auto_find_hexcols=True,verbose=False,sep=r'\s+',check4csv=True,**kwargs):
         #self.t = ascii.read(filename,format='commented_header',delimiter='\s',fill_values=[('-',0),('--',0)])
 
         try:
@@ -645,7 +645,7 @@ class pdastroclass:
             #header = fits.getheader(self.t.loc[index,fitsfilecolname],ext=ext,extname=extname)
             # It was impossible to use 'verify' with getheader... 
             hdu = fits.open(self.t.loc[index,fitsfilecolname],output_verify="silentfix")
-            print(hdu.info())
+            #print(hdu.info())
             if ext is not None:
                 header = hdu[ext].header
             elif extname is not None:

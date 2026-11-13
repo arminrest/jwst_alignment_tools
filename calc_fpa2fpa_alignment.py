@@ -118,6 +118,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
         self.src_nominal_V2ref = None
         self.src_nominal_V3ref = None
         self.src_nominal_V3IdlYAngle = None
+        self.src_nominal_type = None
 
         self.new_trg_V2ref = None
         self.new_trg_V3ref = None
@@ -289,13 +290,15 @@ class fpa2fpa_alignmentclass(pdastroclass):
         
         if v2v3refvalues is not None:
             (self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle)=v2v3refvalues
+            self.src_nominal_type = 'manual'
         else:
             if v2v3ref_type_src in ['table_aperture','table']:
                 try:
                     if self.verbose>0:
                         print('Using v2v3ref info table for nominal v2/v3ref info')
-                    
+                    #self.v2v3ref.write()
                     (self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle,ix)=self.v2v3ref.get_v2v3info(self.src_aperture.AperName,filtername=self.src_filter,pupilname=self.src_pupil)
+                    self.src_nominal_type = 'table'
                 except BaseException as error:
                     if v2v3ref_type_src == 'table_aperture':
                         print('WARNING: could not get v2v3ref from table with error: {}'.format(error))
@@ -305,7 +308,10 @@ class fpa2fpa_alignmentclass(pdastroclass):
                         self.src_nominal_V2ref = self.src_aperture.V2Ref
                         self.src_nominal_V3ref = self.src_aperture.V3Ref
                         self.src_nominal_V3IdlYAngle = self.src_aperture.V3IdlYAngle
+                        self.src_nominal_type = 'aperture'
                     else:
+                        (self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle)=(None,None,None)
+                        self.src_nominal_type = None
                         raise RuntimeError('could not get v2v3ref from table with error: {}'.format(error))
             elif v2v3ref_type_src == 'aperture':
                 if self.verbose>0:
@@ -313,19 +319,24 @@ class fpa2fpa_alignmentclass(pdastroclass):
                 self.src_nominal_V2ref = self.src_aperture.V2Ref
                 self.src_nominal_V3ref = self.src_aperture.V3Ref
                 self.src_nominal_V3IdlYAngle = self.src_aperture.V3IdlYAngle
+                self.src_nominal_type = 'aperture'
             elif v2v3ref_type_src == 'manual':
+                (self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle)=(None,None,None)
+                self.src_nominal_type = None
                 raise RuntimeError(f'v2v3ref_type_src == {v2v3ref_type_src}, but no v2v3refvalues passed!')
             else:
+                (self.src_nominal_V2ref,self.src_nominal_V3ref,self.src_nominal_V3IdlYAngle)=(None,None,None)
+                self.src_nominal_type = None
                 raise RuntimeError(f'v2v3ref_type_src == {v2v3ref_type_src} not supported')
 
         if self.verbose:
-            print(f'NOMINAL v2v3ref values for source {self.src_aperture.AperName} filter={self.src_filter} pupil={self.src_pupil}')
+            print(f'NOMINAL v2v3ref values for source {self.src_aperture.AperName} filter={self.src_filter} pupil={self.src_pupil}, source type={self.src_nominal_type}')
             print(f'(V2Ref,V3Ref,V3IdlYAngle)=({self.src_nominal_V2ref},{self.src_nominal_V3ref},{self.src_nominal_V3IdlYAngle})')
                         
             
             
         
-    def get_nominal_v2v3info(self,siaf_file = None, v2v3refvalues=None):
+    def get_nominal_v2v3info(self, v2v3ref_type_src='aperture', v2v3refvalues=None, siaf_file = None):
         """
         Get the desired, nominal V2ref,V3ref,V3IdlYAngle for the source image.
         These values can either be taken from siaf, or alternatively from a siaf file.
@@ -624,7 +635,7 @@ class fpa2fpa_alignmentclass(pdastroclass):
 
         
         if self.verbose:
-            print('\n######\n###### Results:\n######')
+            print('\n###### Results:')
             print(f'{self.trg_aperture.AperName} {self.trg_filter} {self.trg_pupil} V2Ref: {self.new_trg_V2ref:10.4f} (siaf: {self.trg_aperture.V2Ref:10.4f}, difference {self.new_trg_V2ref-self.trg_aperture.V2Ref:7.4f})')
             print(f'{self.trg_aperture.AperName} {self.trg_filter} {self.trg_pupil} V3Ref: {self.new_trg_V3ref:10.4f} (siaf: {self.trg_aperture.V3Ref:10.4f}, difference {self.new_trg_V3ref-self.trg_aperture.V3Ref:7.4f})')
             #self.t.loc[trg_ixs[2],'v2rot']-self.t.loc[trg_ixs[1],'v2rot'], 

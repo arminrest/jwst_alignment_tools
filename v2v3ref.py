@@ -77,15 +77,12 @@ class v2v3refclass(pdastroclass):
             
     
     def load_v2v3ref(self,filename,**kwargs):
-        print(f'VBFNVBNVBNVBNVBNVBNVB0 {self.filename}')
         if re.search('\.xml$',filename) is not None:
             self.load_xml(filename,**kwargs)
         elif re.search('\.txt$',filename) is not None:            
             self.load_txt(filename,**kwargs)
         else:
             raise RuntimeError(f'cannot load file {filename}, only xml and txt files are allowed!')
-        print(f'VBFNVBNVBNVBNVBNVBNVB1 {self.filename}')
-
         return(0)
     
     def define_options(self,parser=None,usage=None,conflict_handler='resolve'):
@@ -101,6 +98,9 @@ class v2v3refclass(pdastroclass):
     
     def get_v2v3info(self,aperture,filtername=None,pupilname=None,progID=None,verbose=0):
         # get all entries for aperture
+
+        print('bbbbb',aperture,aperture.lower(),type(aperture))
+
         ixs = self.ix_equal(self.param2col['apername'],aperture.lower())
         if verbose:print(f'{len(ixs)} with aperture {aperture.lower()}')
         
@@ -109,7 +109,7 @@ class v2v3refclass(pdastroclass):
             if not ('filter' in  self.param2col):
                 raise RuntimeError("column name for filter is not defined!")
             ixs = self.ix_equal(self.param2col['filter'],filtername.lower(),indices=ixs)
-            if verbose:print(f'{len(ixs)} left with aperture {aperture.lower()}')
+            if verbose:print(f'{len(ixs)} left with filter {filtername.lower()}')
 
         # check for pupil?
         if pupilname is not None:
@@ -122,7 +122,7 @@ class v2v3refclass(pdastroclass):
                 raise RuntimeError("column name for progID is not defined!")
             ixs = self.ix_equal(self.param2col['progID'],progID.lower(),indices=ixs)
             
-        # error checking: make sure there is exactly one entrie
+        # error checking: make sure there is exactly one entry
         if len(ixs)==0:
             raise RuntimeError(f'no v2v3 entries found for aperture {aperture}')
         elif len(ixs)>1:
